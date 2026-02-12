@@ -1,0 +1,42 @@
+# .github/workflows/release.yml
+# Triggers on version tags (v1.0.0, v0.2.1, etc.)
+# Builds cross-platform binaries and publishes Homebrew formula
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Check out the code at the tagged commit
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # GoReleaser needs full git history for changelog
+
+      # Step 2: Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      # Step 3: Run GoReleaser - this does everything:
+      #   - Builds binaries for all platforms
+      #   - Creates GitHub Release with changelog
+      #   - Generates and pushes Homebrew formula to your tap repo
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

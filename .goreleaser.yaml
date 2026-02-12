@@ -1,0 +1,77 @@
+# .goreleaser.yaml
+# GoReleaser config for promptctl
+# Docs: https://goreleaser.com
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: promptctl
+    main: ./main.go
+    binary: promptctl
+    env:
+      - CGO_ENABLED=0
+    # Build for macOS (Intel + Apple Silicon), Linux, and Windows
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Inject version info at build time
+    ldflags:
+      - -s -w
+      - -X github.com/oleg/promptctl/cmd.version={{.Version}}
+
+archives:
+  - id: promptctl
+    format: tar.gz
+    # Use zip for Windows
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+
+# This is the key part - auto-generates the Homebrew formula
+# and pushes it to your tap repo
+brews:
+  - repository:
+      owner: YOUR_GITHUB_USERNAME    # <-- CHANGE THIS
+      name: homebrew-tap             # <-- your tap repo name
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    # Formula metadata
+    name: promptctl
+    homepage: "https://github.com/YOUR_GITHUB_USERNAME/promptctl"
+    description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
+    license: "MIT"
+    # Where the formula lands in the tap repo
+    directory: Formula
+    # Dependencies (none for promptctl - it's a static binary)
+    # Install instructions
+    install: |
+      bin.install "promptctl"
+    # Post-install test
+    test: |
+      assert_match "promptctl v", shell_output("#{bin}/promptctl version")

@@ -1,0 +1,26 @@
+# Binary
+promptctl
+promptctl.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build output
+dist/
+pkg/
+
+# Test
+*.test
+*.out
+coverage.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
