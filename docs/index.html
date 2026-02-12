@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>promptctl - Stop writing prompts. Engineer them.</title>
+    <meta name="description" content="A CLI toolkit that transforms raw ideas into structured, optimized prompts. Install via Homebrew.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #0a0a0b;
+            --bg-elevated: #111113;
+            --bg-card: #161618;
+            --bg-terminal: #0d0d0f;
+            --border: #222226;
+            --border-hover: #333338;
+            --text: #e4e4e7;
+            --text-muted: #71717a;
+            --text-dim: #52525b;
+            --accent: #f97316;
+            --accent-dim: #c2410c;
+            --accent-glow: rgba(249, 115, 22, 0.15);
+            --green: #22c55e;
+            --green-dim: #16a34a;
+            --cyan: #06b6d4;
+            --purple: #a78bfa;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+            --font-sans: 'Instrument Sans', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            background: var(--bg);
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* -- Grain overlay for texture -- */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* -- Layout -- */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* -- Navigation -- */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 0;
+            background: rgba(10, 10, 11, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        nav.scrolled {
+            border-bottom-color: var(--border);
+        }
+
+        nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        nav .links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        nav .links a {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        nav .links a:hover { color: var(--text); }
+
+        .btn-install {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-install:hover {
+            background: #fb923c;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* -- Hero -- */
+        .hero {
+            padding: 160px 0 80px;
+            position: relative;
+        }
+
+        /* Radial glow behind hero */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 500px;
+            background: radial-gradient(ellipse at center,
+                rgba(249, 115, 22, 0.06) 0%,
+                transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+            background: var(--accent-glow);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 32px;
+            animation: fadeInUp 0.6s ease-out both;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        h1 {
+            font-family: var(--font-sans);
+            font-size: clamp(42px, 6vw, 72px);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -2.5px;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        h1 .accent { color: var(--accent); }
+
+        .hero-sub {
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--text-muted);
+            max-width: 540px;
+            margin-bottom: 48px;
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 64px;
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+        }
+
+        .install-cmd {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .install-cmd:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-elevated);
+        }
+
+        .install-cmd .prompt-char {
+            color: var(--accent);
+            user-select: none;
+        }
+
+        .install-cmd code {
+            color: var(--text);
+        }
+
+        .install-cmd .copy-icon {
+            color: var(--text-dim);
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .install-cmd:hover .copy-icon { color: var(--text-muted); }
+
+        .install-cmd .tooltip {
+            position: absolute;
+            top: -36px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--green);
+            color: var(--bg);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .install-cmd .tooltip.show { opacity: 1; }
+
+        .github-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 12px 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .github-btn:hover {
+            border-color: var(--border-hover);
+            color: var(--text);
+        }
+
+        /* -- Terminal demo -- */
+        .terminal {
+            background: var(--bg-terminal);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+            animation: fadeInUp 0.6s ease-out 0.4s both;
+        }
+
+        .terminal-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 18px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f57; }
+        .terminal-dot.yellow { background: #febc2e; }
+        .terminal-dot.green { background: #28c840; }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .terminal-body {
+            padding: 24px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .terminal-body .line {
+            white-space: pre;
+            opacity: 0;
+            animation: terminalLine 0.3s ease-out forwards;
+        }
+
+        .terminal-body .prompt-sym { color: var(--accent); }
+        .terminal-body .cmd { color: var(--text); font-weight: 500; }
+        .terminal-body .flag { color: var(--cyan); }
+        .terminal-body .string { color: var(--green); }
+        .terminal-body .tag { color: var(--purple); }
+        .terminal-body .comment { color: var(--text-dim); font-style: italic; }
+        .terminal-body .output { color: var(--text-muted); }
+        .terminal-body .highlight { color: var(--yellow); }
+        .terminal-body .dim { color: var(--text-dim); }
+
+        /* -- Features section -- */
+        .features {
+            padding: 120px 0;
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+            line-height: 1.1;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 16px;
+            max-width: 500px;
+            margin-bottom: 64px;
+            line-height: 1.6;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            padding: 36px 32px;
+            transition: background 0.3s;
+        }
+
+        .feature-card:hover { background: var(--bg-elevated); }
+
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            letter-spacing: -0.3px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* -- How it works -- */
+        .how-it-works {
+            padding: 80px 0 120px;
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            align-items: start;
+            gap: 0;
+            margin-top: 64px;
+        }
+
+        .flow-step {
+            text-align: center;
+            padding: 0 16px;
+        }
+
+        .flow-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .flow-step h3 {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .flow-step p {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .flow-step code {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--accent);
+        }
+
+        .flow-arrow {
+            color: var(--text-dim);
+            font-size: 24px;
+            padding-top: 8px;
+            align-self: start;
+        }
+
+        /* -- Templates section -- */
+        .templates {
+            padding: 80px 0 120px;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+            margin-top: 48px;
+        }
+
+        .template-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            transition: all 0.2s;
+        }
+
+        .template-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+
+        .template-card .t-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .template-card h3 {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .template-card p {
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .template-card .t-cmd {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 10px;
+            display: block;
+        }
+
+        /* -- CTA -- */
+        .cta {
+            padding: 100px 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse at center,
+                rgba(249, 115, 22, 0.05) 0%,
+                transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta h2 {
+            margin-bottom: 24px;
+        }
+
+        .cta p {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 40px;
+        }
+
+        .cta-install {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cta-install code {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 16px 32px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .cta-install code .prompt-sym { color: var(--accent); }
+
+        .cta-install .sub {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* -- Footer -- */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        footer .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        footer p {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        footer a:hover { color: var(--text); }
+
+        /* -- Animations -- */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes terminalLine {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .cursor-blink {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--accent);
+            margin-left: 2px;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+
+        /* -- Responsive -- */
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .flow {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            .flow-arrow { display: none; }
+
+            nav .links a:not(.btn-install) { display: none; }
+
+            .hero-actions {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .template-grid {
+                grid-template-columns: 1fr;
+            }
+
+            footer .container {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav id="nav">
+    <div class="container">
+        <a href="#" class="logo">prompt<span>ctl</span></a>
+        <div class="links">
+            <a href="#features">Features</a>
+            <a href="#how">How it works</a>
+            <a href="#templates">Templates</a>
+            <a href="https://github.com/oleg-koval/promptctl" target="_blank">GitHub</a>
+            <a href="#install" class="btn-install">Install</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">v0.1.0 - now on Homebrew</div>
+
+        <h1>Stop writing prompts.<br>
+        <span class="accent">Engineer them.</span></h1>
+
+        <p class="hero-sub">
+            A CLI toolkit that transforms rough ideas into structured, optimized prompts.
+            Build once, reuse everywhere. Zero dependencies, single binary.
+        </p>
+
+        <div class="hero-actions">
+            <div class="install-cmd" onclick="copyInstall(this)" title="Click to copy">
+                <span class="prompt-char">$</span>
+                <code>brew install oleg-koval/tap/promptctl</code>
+                <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span class="tooltip" id="copy-tooltip">Copied!</span>
+            </div>
+            <a href="https://github.com/oleg-koval/promptctl" class="github-btn" target="_blank">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                View source
+            </a>
+        </div>
+
+        <!-- Terminal demo -->
+        <div class="terminal">
+            <div class="terminal-bar">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+                <span class="terminal-title">promptctl demo</span>
+                <span style="width: 36px;"></span>
+            </div>
+            <div class="terminal-body">
+                <div class="line" style="animation-delay: 0.5s"><span class="prompt-sym">$</span> <span class="cmd">promptctl create</span> <span class="string">"analyze my SaaS idea for the Dutch market. be critical"</span></div>
+                <div class="line" style="animation-delay: 1.0s"></div>
+                <div class="line" style="animation-delay: 1.2s"><span class="tag">&lt;context&gt;</span></div>
+                <div class="line" style="animation-delay: 1.4s"><span class="output">You are a seasoned venture analyst with experience evaluating</span></div>
+                <div class="line" style="animation-delay: 1.5s"><span class="output">500+ business ideas. Your job is to give an honest, evidence-based</span></div>
+                <div class="line" style="animation-delay: 1.6s"><span class="output">assessment - not encouragement.</span></div>
+                <div class="line" style="animation-delay: 1.7s"><span class="tag">&lt;/context&gt;</span></div>
+                <div class="line" style="animation-delay: 1.9s"></div>
+                <div class="line" style="animation-delay: 2.0s"><span class="tag">&lt;task&gt;</span></div>
+                <div class="line" style="animation-delay: 2.1s"><span class="output">1. Market size and growth trajectory</span></div>
+                <div class="line" style="animation-delay: 2.2s"><span class="output">2. Competitive landscape with <span class="highlight">named competitors</span></span></div>
+                <div class="line" style="animation-delay: 2.3s"><span class="output">3. Unit economics and path to profitability</span></div>
+                <div class="line" style="animation-delay: 2.4s"><span class="output">4. <span class="highlight">Kill criteria</span> - signals to stop pursuing this</span></div>
+                <div class="line" style="animation-delay: 2.5s"><span class="tag">&lt;/task&gt;</span></div>
+                <div class="line" style="animation-delay: 2.7s"></div>
+                <div class="line" style="animation-delay: 2.8s"><span class="tag">&lt;constraints&gt;</span></div>
+                <div class="line" style="animation-delay: 2.9s"><span class="output">- Be ruthlessly honest. If the idea is bad, say so directly.</span></div>
+                <div class="line" style="animation-delay: 3.0s"><span class="output">- Challenge every assumption. Default to skepticism.</span></div>
+                <div class="line" style="animation-delay: 3.1s"><span class="tag">&lt;/constraints&gt;</span><span class="cursor-blink"></span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+    <div class="container">
+        <div class="section-label">Features</div>
+        <h2>Prompt engineering on autopilot</h2>
+        <p class="section-desc">
+            Every prompt follows best practices by default. Structure, personas, constraints,
+            and output formats - injected automatically based on what you're trying to do.
+        </p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="feature-icon">&#9889;</span>
+                <h3>create</h3>
+                <p>Turn raw, unstructured intent into a fully structured prompt. Auto-detects task type, assigns expert personas, infers implied needs, and adds quality constraints.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">&#128194;</span>
+                <h3>templates</h3>
+                <p>Reusable YAML templates with variable substitution. Global library for your patterns, project-level overrides for team consistency. Define once, use everywhere.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">&#128196;</span>
+                <h3>file-aware</h3>
+                <p>Pass <code style="font-size:12px;">--file=path</code> and the content, filename, and language are auto-injected. Review code, debug errors, explain modules - all with one command.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">&#127919;</span>
+                <h3>task detection</h3>
+                <p>Automatically classifies your intent into 11 task types: business analysis, code review, debugging, architecture, planning, writing, and more. Each gets specialized structure.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">&#128257;</span>
+                <h3>pipe anywhere</h3>
+                <p>Output goes to stdout. Pipe to Claude CLI, OpenAI, copy to clipboard, or redirect to a file. Fits into any workflow without lock-in.</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">&#9881;&#65039;</span>
+                <h3>zero config</h3>
+                <p>Single binary, no runtime dependencies. Run <code style="font-size:12px;">promptctl init</code> and you have 5 battle-tested templates immediately. Extend when you need to.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="how-it-works" id="how">
+    <div class="container">
+        <div class="section-label">How it works</div>
+        <h2>From rough idea to structured prompt</h2>
+        <p class="section-desc">
+            The <code style="font-size:14px;">create</code> command runs a deterministic, rule-based engine.
+            No LLM call needed - it applies prompting best practices at the speed of your disk.
+        </p>
+
+        <div class="flow">
+            <div class="flow-step">
+                <div class="flow-num">1</div>
+                <h3>Classify</h3>
+                <p>Detects task type from keywords. Business analysis, code review, debugging, architecture - 11 categories, each with specialized handling.</p>
+            </div>
+            <div class="flow-arrow">&#8594;</div>
+            <div class="flow-step">
+                <div class="flow-num">2</div>
+                <h3>Decompose</h3>
+                <p>Splits your intent into distinct actions. Infers implied needs you didn't ask for. Detects tone - "be critical" triggers skepticism constraints.</p>
+            </div>
+            <div class="flow-arrow">&#8594;</div>
+            <div class="flow-step">
+                <div class="flow-num">3</div>
+                <h3>Structure</h3>
+                <p>Wraps in XML tags with expert persona, task breakdown, output format template, and quality constraints. Ready to paste or pipe.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Templates -->
+<section class="templates" id="templates">
+    <div class="container">
+        <div class="section-label">Starter templates</div>
+        <h2>Battle-tested prompts out of the box</h2>
+        <p class="section-desc">
+            Five templates ship with <code style="font-size:14px;">promptctl init</code>.
+            Each encodes real-world prompt engineering patterns.
+        </p>
+
+        <div class="template-grid">
+            <div class="template-card">
+                <span class="t-icon">&#128269;</span>
+                <div>
+                    <h3>review</h3>
+                    <p>Security-first code review with line-number references, severity ranking, and concrete fix suggestions.</p>
+                    <span class="t-cmd">promptctl review --file=auth.ts</span>
+                </div>
+            </div>
+            <div class="template-card">
+                <span class="t-icon">&#128027;</span>
+                <div>
+                    <h3>debug</h3>
+                    <p>Root cause analysis, not symptom chasing. Explains why the bug occurs and how to prevent recurrence.</p>
+                    <span class="t-cmd">promptctl debug --file=api.ts --error="TypeError..."</span>
+                </div>
+            </div>
+            <div class="template-card">
+                <span class="t-icon">&#127959;</span>
+                <div>
+                    <h3>arch</h3>
+                    <p>Architecture decision records with options matrix, trade-off analysis, and concrete migration steps.</p>
+                    <span class="t-cmd">promptctl arch --problem="REST vs gRPC"</span>
+                </div>
+            </div>
+            <div class="template-card">
+                <span class="t-icon">&#128221;</span>
+                <div>
+                    <h3>commit</h3>
+                    <p>Conventional commit messages from diffs or descriptions. Imperative mood, scoped, under 72 chars.</p>
+                    <span class="t-cmd">promptctl commit --changes="added retry logic"</span>
+                </div>
+            </div>
+            <div class="template-card">
+                <span class="t-icon">&#128218;</span>
+                <div>
+                    <h3>explain</h3>
+                    <p>Code explanation at three depth levels: overview, detailed, and deep-dive. Built for knowledge transfer.</p>
+                    <span class="t-cmd">promptctl explain --file=parser.go --depth=detailed</span>
+                </div>
+            </div>
+            <div class="template-card">
+                <span class="t-icon">&#10024;</span>
+                <div>
+                    <h3>+ your own</h3>
+                    <p>Create custom templates with <code style="font-size:11px;">promptctl add</code>. YAML format with variables, conditionals, and auto-file reading.</p>
+                    <span class="t-cmd">promptctl add my-template</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="install">
+    <div class="container">
+        <h2>Install in 10 seconds</h2>
+        <p>Single binary. macOS, Linux, Windows. No runtime dependencies.</p>
+        <div class="cta-install">
+            <code><span class="prompt-sym">$</span> brew tap oleg-koval/tap && brew install promptctl</code>
+            <span class="sub">or download binaries from <a href="https://github.com/oleg-koval/promptctl/releases" target="_blank" style="color: var(--accent);">GitHub Releases</a></span>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <p>promptctl - MIT License</p>
+        <p>
+            <a href="https://github.com/oleg-koval/promptctl" target="_blank">GitHub</a>
+            &nbsp;&middot;&nbsp;
+            <a href="https://github.com/oleg-koval/promptctl/releases" target="_blank">Releases</a>
+            &nbsp;&middot;&nbsp;
+            <a href="https://github.com/oleg-koval/promptctl/issues" target="_blank">Issues</a>
+        </p>
+    </div>
+</footer>
+
+<script>
+    // Nav scroll effect
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // Copy install command
+    function copyInstall(el) {
+        const cmd = el.querySelector('code').textContent;
+        navigator.clipboard.writeText(cmd).then(() => {
+            const tooltip = el.querySelector('.tooltip');
+            tooltip.classList.add('show');
+            setTimeout(() => tooltip.classList.remove('show'), 1500);
+        });
+    }
+</script>
+
+</body>
+</html>

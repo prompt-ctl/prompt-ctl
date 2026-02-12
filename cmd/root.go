@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/llm"
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
@@ -26,6 +27,14 @@ func Execute() error {
 		return createPrompt()
 	case "run", "r":
 		return runPrompt()
+	case "send", "s":
+		return sendPrompt()
+	case "cost":
+		return showCost()
+	case "models":
+		return listModels()
+	case "config":
+		return configLLM()
 	case "list", "ls":
 		return listPrompts()
 	case "add":
@@ -60,34 +69,35 @@ func printUsage() {
 USAGE:
   promptctl <command> [arguments]
 
-COMMANDS:
+PROMPT ENGINEERING:
   create "intent"     Transform raw intent into a structured prompt (alias: c)
-  run <name> [vars]   Run a prompt template (alias: r)
+  run <n> [vars]   Run a prompt template (alias: r)
+  send <n> [vars]  Run template and send to LLM (alias: s)
+  cost <n> [vars]  Estimate cost before sending
   list                List all available templates (alias: ls)
-  add <name>          Create a new prompt template interactively
-  edit <name>         Open a template in your $EDITOR
-  show <name>         Display a template's content and metadata
-  copy <name>         Copy rendered prompt to clipboard (alias: cp)
-  init                Initialize config in current directory or home
-  vars <name>         Show variables required by a template
-  version             Print version
-  help                Show this help
 
-SHORTHAND:
-  promptctl review              (same as: promptctl run review)
-  promptctl review --file=x.ts  (passes variable to template)
+TEMPLATE MANAGEMENT:
+  add <n>          Create a new prompt template
+  edit <n>         Open template in $EDITOR
+  show <n>         Display template content and metadata
+  copy <n>         Copy rendered prompt to clipboard (alias: cp)
+  vars <n>         Show variables required by a template
+
+LLM CONFIGURATION:
+  models              List all supported models with pricing
+  config              View or set LLM provider configuration
+  init                Initialize config and starter templates
 
 EXAMPLES:
-  promptctl init                          # Set up config
-  promptctl add review                    # Create a "review" template
-  promptctl run review --file=main.go     # Run with variable
-  promptctl review --file=main.go         # Shorthand for above
-  promptctl cp review --file=main.go      # Copy to clipboard
+  promptctl create "analyze my SaaS idea, be critical"
+  promptctl send review --file=auth.ts --model=gpt-4o
+  promptctl cost review --file=main.go --compare
+  promptctl config --provider=anthropic --api-key=sk-ant-...
 
-CONFIG:
-  Templates are stored in ~/.promptctl/templates/
-  Project-level overrides: .promptctl/templates/
-  Global config: ~/.promptctl/config.yaml`)
+COST SAVINGS:
+  Structured prompts produce focused responses in 1 call.
+  Unstructured prompts cost ~3x more: rambling + rework + follow-ups.
+  Run 'promptctl cost --compare' to see exactly how much you save.`)
 }
 
 // createPrompt transforms raw intent into a structured prompt
@@ -524,6 +534,333 @@ func copyToClipboard(text string) error {
 		return nil
 	}
 	return fmt.Errorf("no clipboard tool found")
+}
+
+// sendPrompt renders a template or creates a prompt, then sends it to an LLM
+func sendPrompt() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf(`usage:
+  promptctl send <template-name> [--var=value ...] [--model=MODEL]
+  promptctl send --create "your intent here" [--model=MODEL]
+
+Examples:
+  promptctl send review --file=auth.ts --model=claude-sonnet-4
+  promptctl send --create "analyze my startup idea about X" --model=gpt-4o`)
+	}
+
+	vars := parseVars(os.Args[2:])
+	modelID := vars["model"]
+	if modelID == "" {
+		cfg, _ := llm.LoadConfig()
+		if cfg != nil {
+			modelID = cfg.DefaultModel
+		}
+		if modelID == "" {
+			modelID = "claude-sonnet-4-20250514"
+		}
+	}
+	delete(vars, "model")
+
+	var renderedPrompt string
+	var promptType string
+
+	// Check if using --create mode or template mode
+	if createIntent, ok := vars["create"]; ok {
+		// Create mode: enhance the intent first
+		enhanceCfg := prompt.EnhanceConfig{
+			Intent:       createIntent,
+			OutputFormat: "xml",
+		}
+		result, err := prompt.Enhance(enhanceCfg)
+		if err != nil {
+			return fmt.Errorf("failed to enhance prompt: %w", err)
+		}
+		renderedPrompt = result.Prompt
+		promptType = "general"
+	} else {
+		// Template mode
+		name := os.Args[2]
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		tmpl, err := prompt.LoadTemplate(name, cfg)
+		if err != nil {
+			return fmt.Errorf("template '%s' not found", name)
+		}
+
+		// Handle file reading
+		if filePath, ok := vars["file"]; ok {
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to read file '%s': %w", filePath, err)
+			}
+			vars["file_content"] = string(content)
+			vars["file_name"] = filepath.Base(filePath)
+			vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+		}
+
+		renderedPrompt, err = tmpl.Render(vars)
+		if err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+		promptType = name
+	}
+
+	// Show cost estimate before sending
+	est, err := llm.EstimateCost(renderedPrompt, modelID, promptType)
+	if err != nil {
+		return fmt.Errorf("cost estimation failed: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "\n  Sending to %s...\n", est.ModelName)
+	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f vs unstructured)\n\n", est.TotalEstCost, est.Savings)
+
+	// Execute the LLM call
+	result, err := llm.Complete(renderedPrompt, modelID)
+	if err != nil {
+		return fmt.Errorf("LLM call failed: %w", err)
+	}
+
+	// Print the response
+	fmt.Println(result.Content)
+
+	// Print cost summary to stderr
+	fmt.Fprintf(os.Stderr, "\n  ─── Cost Report ───\n")
+	fmt.Fprintf(os.Stderr, "  Model:    %s\n", result.Model)
+	fmt.Fprintf(os.Stderr, "  Tokens:   %s in / %s out\n",
+		formatNumSimple(result.InputTokens), formatNumSimple(result.OutputTokens))
+	fmt.Fprintf(os.Stderr, "  Cost:     $%.4f\n", result.ActualCost)
+	fmt.Fprintf(os.Stderr, "  Latency:  %.1fs\n", float64(result.LatencyMs)/1000)
+	fmt.Fprintf(os.Stderr, "  Saved:    ~$%.4f vs unstructured prompting\n\n", result.ActualCost*2)
+
+	return nil
+}
+
+// showCost estimates the cost of a prompt without executing it
+func showCost() error {
+	if len(os.Args) < 3 {
+		return fmt.Errorf(`usage:
+  promptctl cost <template-name> [--var=value ...] [--model=MODEL]
+  promptctl cost --create "your intent here" [--model=MODEL]
+  promptctl cost --compare "your intent here"
+
+Options:
+  --model=MODEL     Specific model to estimate for (default: claude-sonnet-4)
+  --compare         Show cost comparison across all supported models`)
+	}
+
+	vars := parseVars(os.Args[2:])
+	modelID := vars["model"]
+	if modelID == "" {
+		modelID = "claude-sonnet-4-20250514"
+	}
+
+	var renderedPrompt string
+	var promptType string
+
+	// Determine the prompt to estimate
+	if createIntent, ok := vars["create"]; ok {
+		enhanceCfg := prompt.EnhanceConfig{
+			Intent:       createIntent,
+			OutputFormat: "xml",
+		}
+		result, err := prompt.Enhance(enhanceCfg)
+		if err != nil {
+			return err
+		}
+		renderedPrompt = result.Prompt
+		promptType = "general"
+	} else if hasFlag("--compare") {
+		// --compare is the second arg, intent is the third
+		if len(os.Args) >= 4 && !strings.HasPrefix(os.Args[3], "--") {
+			enhanceCfg := prompt.EnhanceConfig{
+				Intent:       os.Args[3],
+				OutputFormat: "xml",
+			}
+			result, err := prompt.Enhance(enhanceCfg)
+			if err != nil {
+				return err
+			}
+			renderedPrompt = result.Prompt
+		} else if len(os.Args) >= 3 && !strings.HasPrefix(os.Args[2], "--") {
+			// cost <template> --compare
+			name := os.Args[2]
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			tmpl, err := prompt.LoadTemplate(name, cfg)
+			if err != nil {
+				return fmt.Errorf("template '%s' not found", name)
+			}
+			renderedPrompt = tmpl.Body
+		}
+		promptType = "general"
+	} else {
+		name := os.Args[2]
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		tmpl, err := prompt.LoadTemplate(name, cfg)
+		if err != nil {
+			// Maybe it's raw text
+			renderedPrompt = name
+			promptType = "general"
+		} else {
+			// Handle file reading for accurate estimation
+			if filePath, ok := vars["file"]; ok {
+				content, err := os.ReadFile(filePath)
+				if err != nil {
+					return fmt.Errorf("failed to read file: %w", err)
+				}
+				vars["file_content"] = string(content)
+				vars["file_name"] = filepath.Base(filePath)
+				vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+			}
+
+			renderedPrompt, err = tmpl.Render(vars)
+			if err != nil {
+				renderedPrompt = tmpl.Body // fallback to unrendered
+			}
+			promptType = name
+		}
+	}
+
+	if renderedPrompt == "" {
+		return fmt.Errorf("no prompt to estimate. Provide a template name or --create=\"intent\"")
+	}
+
+	// Show comparison or single estimate
+	if hasFlag("--compare") {
+		fmt.Println("\n  Cost comparison across all models:\n")
+		fmt.Println(llm.FormatCostComparison(renderedPrompt, promptType))
+		fmt.Printf("  Prompt length: ~%s tokens\n\n", formatNumSimple(llm.EstimateTokens(renderedPrompt)))
+	} else {
+		est, err := llm.EstimateCost(renderedPrompt, modelID, promptType)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("\n  Cost estimate:\n")
+		fmt.Println(llm.FormatCostEstimate(est))
+		fmt.Println()
+	}
+
+	return nil
+}
+
+// listModels shows all supported models with pricing
+func listModels() error {
+	fmt.Println("\n  Supported models:\n")
+	fmt.Println(llm.FormatModelList())
+
+	cfg, _ := llm.LoadConfig()
+	if cfg != nil && cfg.DefaultModel != "" {
+		fmt.Printf("  Default model: %s\n", cfg.DefaultModel)
+	}
+
+	// Show which providers have API keys configured
+	fmt.Println("\n  API key status:\n")
+	for _, providerName := range []string{"anthropic", "openai", "groq", "deepseek"} {
+		provider := llm.Providers[providerName]
+		status := "  not configured"
+		// Check env var
+		if os.Getenv(provider.EnvKey) != "" {
+			status = "  via $" + provider.EnvKey
+		}
+		// Check config file
+		if cfg != nil {
+			if key, ok := cfg.APIKeys[providerName]; ok && key != "" {
+				status = "  configured"
+			}
+		}
+		fmt.Printf("  %-12s %s\n", provider.Name, status)
+	}
+	fmt.Println()
+
+	return nil
+}
+
+// configLLM sets up LLM provider configuration
+func configLLM() error {
+	vars := parseVars(os.Args[2:])
+
+	cfg, err := llm.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	changed := false
+
+	if provider, ok := vars["provider"]; ok {
+		if _, exists := llm.Providers[provider]; !exists {
+			return fmt.Errorf("unknown provider: '%s'. Supported: anthropic, openai, groq, deepseek", provider)
+		}
+		cfg.DefaultProvider = provider
+		changed = true
+		fmt.Printf("Default provider set to: %s\n", provider)
+	}
+
+	if model, ok := vars["model"]; ok {
+		if _, err := llm.FindModel(model); err != nil {
+			return err
+		}
+		cfg.DefaultModel = model
+		changed = true
+		fmt.Printf("Default model set to: %s\n", model)
+	}
+
+	if apiKey, ok := vars["api-key"]; ok {
+		provider := cfg.DefaultProvider
+		if p, ok := vars["provider"]; ok {
+			provider = p
+		}
+		cfg.APIKeys[provider] = apiKey
+		changed = true
+		// Show only first and last 4 chars of the key
+		masked := apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+		fmt.Printf("API key stored for %s: %s\n", provider, masked)
+	}
+
+	if !changed {
+		// Show current config
+		fmt.Println("\nCurrent LLM configuration:\n")
+		fmt.Printf("  Default provider: %s\n", cfg.DefaultProvider)
+		fmt.Printf("  Default model:    %s\n", cfg.DefaultModel)
+		fmt.Printf("  Config file:      ~/.promptctl/llm.json\n\n")
+
+		fmt.Println("Set configuration:")
+		fmt.Println("  promptctl config --provider=anthropic --api-key=sk-ant-...")
+		fmt.Println("  promptctl config --model=gpt-4o")
+		fmt.Println("  promptctl config --provider=groq --api-key=gsk_...")
+		fmt.Println()
+		return nil
+	}
+
+	if err := llm.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	return nil
+}
+
+func formatNumSimple(n int) string {
+	s := fmt.Sprintf("%d", n)
+	if n < 1000 {
+		return s
+	}
+	result := make([]byte, 0, len(s)+len(s)/3)
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 func findExecutable(name string) (string, error) {

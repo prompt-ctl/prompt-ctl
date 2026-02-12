@@ -159,6 +159,43 @@ else
     success "homebrew-tap repo created and initialized"
 fi
 
+# Update the tap repo README with the polished version if it exists locally
+if [[ -f "docs/TAP-README.md" ]]; then
+    info "Updating homebrew-tap README with polished version..."
+    TMPDIR_TAP=$(mktemp -d)
+    cd "$TMPDIR_TAP"
+    gh repo clone "$GITHUB_USERNAME/homebrew-tap" . -- --depth=1 2>/dev/null
+    if [[ $? -eq 0 ]]; then
+        cp "$OLDPWD/docs/TAP-README.md" README.md
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' "s/YOUR_USERNAME/$GITHUB_USERNAME/g" README.md
+        else
+            sed -i "s/YOUR_USERNAME/$GITHUB_USERNAME/g" README.md
+        fi
+        git add README.md
+        git diff --cached --quiet 2>/dev/null || {
+            git commit -m "docs: polished tap README"
+            git push origin main
+        }
+        success "Tap README updated"
+    fi
+    cd "$OLDPWD"
+    rm -rf "$TMPDIR_TAP"
+fi
+
+# -- Step 4b: Patch landing page with username --------------------------------
+if [[ -f "docs/index.html" ]]; then
+    if grep -q "YOUR_USERNAME" docs/index.html; then
+        info "Patching landing page with your GitHub username..."
+        if [[ "$(uname)" == "Darwin" ]]; then
+            sed -i '' "s/YOUR_USERNAME/$GITHUB_USERNAME/g" docs/index.html
+        else
+            sed -i "s/YOUR_USERNAME/$GITHUB_USERNAME/g" docs/index.html
+        fi
+        success "Landing page configured"
+    fi
+fi
+
 # -- Step 5: Patch .goreleaser.yaml with actual username ----------------------
 step "5" "Configuring GoReleaser with your GitHub identity"
 
@@ -383,4 +420,9 @@ echo -e "  ${BOLD}Links:${NC}"
 echo -e "    Source:   https://github.com/$GITHUB_USERNAME/promptctl"
 echo -e "    Releases: https://github.com/$GITHUB_USERNAME/promptctl/releases"
 echo -e "    Tap:      https://github.com/$GITHUB_USERNAME/homebrew-tap"
+echo -e "    Website:  https://$GITHUB_USERNAME.github.io/promptctl"
+echo ""
+echo -e "  ${BOLD}Landing page:${NC}"
+echo -e "    The website deploys automatically via GitHub Pages."
+echo -e "    Enable it: repo Settings -> Pages -> Source: GitHub Actions"
 echo ""
