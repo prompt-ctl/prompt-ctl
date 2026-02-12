@@ -58,12 +58,12 @@ changelog:
 # and pushes it to your tap repo
 brews:
   - repository:
-      owner: YOUR_GITHUB_USERNAME    # <-- CHANGE THIS
+      owner: oleg-koval    # <-- CHANGE THIS
       name: homebrew-tap             # <-- your tap repo name
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     # Formula metadata
     name: promptctl
-    homepage: "https://github.com/YOUR_GITHUB_USERNAME/promptctl"
+    homepage: "https://github.com/oleg-koval/promptctl"
     description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
     license: "MIT"
     # Where the formula lands in the tap repo

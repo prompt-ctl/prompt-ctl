@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/oleg/promptctl/config"
-	"github.com/oleg/promptctl/prompt"
+	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/prompt"
 )
 
 const version = "0.1.0"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oleg/promptctl/cmd"
+	"github.com/oleg-koval/promptctl/cmd"
 )
 
 func main() {

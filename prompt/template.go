@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/oleg/promptctl/config"
+	"github.com/oleg-koval/promptctl/config"
 )
 
 // Variable represents a template variable
