@@ -15,10 +15,12 @@ import (
 
 // Provider represents a supported LLM provider
 type Provider struct {
-	Name     string
-	Models   []Model
-	BaseURL  string
-	EnvKey   string // environment variable name for API key
+	Name      string
+	Models    []Model
+	BaseURL   string
+	EnvKey    string // environment variable name for API key
+	KeyURL    string // URL where users create API keys
+	Order     int    // display order in menus
 }
 
 // Model represents a specific model with its pricing
@@ -71,6 +73,8 @@ var Providers = map[string]Provider{
 		Name:    "Anthropic",
 		BaseURL: "https://api.anthropic.com/v1/messages",
 		EnvKey:  "ANTHROPIC_API_KEY",
+		KeyURL:  "https://console.anthropic.com/settings/keys",
+		Order:   1,
 		Models: []Model{
 			{ID: "claude-sonnet-4-20250514", Name: "Claude Sonnet 4", InputPerMTok: 3.0, OutputPerMTok: 15.0, ContextWindow: 200000, Provider: "anthropic"},
 			{ID: "claude-haiku-4-5-20251001", Name: "Claude Haiku 4.5", InputPerMTok: 0.80, OutputPerMTok: 4.0, ContextWindow: 200000, Provider: "anthropic"},
@@ -81,6 +85,8 @@ var Providers = map[string]Provider{
 		Name:    "OpenAI",
 		BaseURL: "https://api.openai.com/v1/chat/completions",
 		EnvKey:  "OPENAI_API_KEY",
+		KeyURL:  "https://platform.openai.com/api-keys",
+		Order:   2,
 		Models: []Model{
 			{ID: "gpt-4o", Name: "GPT-4o", InputPerMTok: 2.50, OutputPerMTok: 10.0, ContextWindow: 128000, Provider: "openai"},
 			{ID: "gpt-4o-mini", Name: "GPT-4o Mini", InputPerMTok: 0.15, OutputPerMTok: 0.60, ContextWindow: 128000, Provider: "openai"},
@@ -91,6 +97,8 @@ var Providers = map[string]Provider{
 		Name:    "Groq",
 		BaseURL: "https://api.groq.com/openai/v1/chat/completions",
 		EnvKey:  "GROQ_API_KEY",
+		KeyURL:  "https://console.groq.com/keys",
+		Order:   3,
 		Models: []Model{
 			{ID: "llama-3.3-70b-versatile", Name: "Llama 3.3 70B", InputPerMTok: 0.59, OutputPerMTok: 0.79, ContextWindow: 128000, Provider: "groq"},
 			{ID: "mixtral-8x7b-32768", Name: "Mixtral 8x7B", InputPerMTok: 0.24, OutputPerMTok: 0.24, ContextWindow: 32768, Provider: "groq"},
@@ -100,6 +108,8 @@ var Providers = map[string]Provider{
 		Name:    "DeepSeek",
 		BaseURL: "https://api.deepseek.com/v1/chat/completions",
 		EnvKey:  "DEEPSEEK_API_KEY",
+		KeyURL:  "https://platform.deepseek.com/api_keys",
+		Order:   4,
 		Models: []Model{
 			{ID: "deepseek-chat", Name: "DeepSeek V3", InputPerMTok: 0.27, OutputPerMTok: 1.10, ContextWindow: 64000, Provider: "deepseek"},
 			{ID: "deepseek-reasoner", Name: "DeepSeek R1", InputPerMTok: 0.55, OutputPerMTok: 2.19, ContextWindow: 64000, Provider: "deepseek"},
@@ -492,6 +502,11 @@ func getAPIKey(provider, envKey string) string {
 // -----------------------------------------------------------------------
 // Model lookup helpers
 // -----------------------------------------------------------------------
+
+// ProviderKeys returns provider keys in display order
+func ProviderKeys() []string {
+	return []string{"anthropic", "openai", "groq", "deepseek"}
+}
 
 // FindModel searches all providers for a model by ID or name
 func FindModel(query string) (*Model, error) {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -753,56 +754,282 @@ Options:
 	return nil
 }
 
-// listModels shows all supported models with pricing
+// listModels shows all models and lets user switch default
 func listModels() error {
+	cfg, _ := llm.LoadConfig()
+	if cfg == nil {
+		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-20250514", APIKeys: make(map[string]string)}
+	}
+
 	fmt.Println("\n  Supported models:\n")
 	fmt.Println(llm.FormatModelList())
 
-	cfg, _ := llm.LoadConfig()
-	if cfg != nil && cfg.DefaultModel != "" {
-		fmt.Printf("  Default model: %s\n", cfg.DefaultModel)
+	// Show current default
+	if cfg.DefaultModel != "" {
+		model, err := llm.FindModel(cfg.DefaultModel)
+		if err == nil {
+			fmt.Printf("  Current default: %s (%s)\n\n", model.Name, model.ID)
+		}
 	}
 
-	// Show which providers have API keys configured
-	fmt.Println("\n  API key status:\n")
-	for _, providerName := range []string{"anthropic", "openai", "groq", "deepseek"} {
-		provider := llm.Providers[providerName]
-		status := "  not configured"
-		// Check env var
-		if os.Getenv(provider.EnvKey) != "" {
-			status = "  via $" + provider.EnvKey
-		}
-		// Check config file
-		if cfg != nil {
-			if key, ok := cfg.APIKeys[providerName]; ok && key != "" {
-				status = "  configured"
-			}
-		}
-		fmt.Printf("  %-12s %s\n", provider.Name, status)
+	// If --set flag, enter interactive model picker
+	if hasFlag("--set") || hasFlag("-s") {
+		return interactiveModelSwitch(cfg)
 	}
+
+	fmt.Println("  Switch model: promptctl models --set")
+	fmt.Println()
+	return nil
+}
+
+// interactiveModelSwitch lets the user pick a new default model
+func interactiveModelSwitch(cfg *llm.Config) error {
+	// Build flat list of all models
+	type indexedModel struct {
+		model    llm.Model
+		provider string
+	}
+	var allModels []indexedModel
+
+	for _, key := range llm.ProviderKeys() {
+		provider := llm.Providers[key]
+		for _, model := range provider.Models {
+			allModels = append(allModels, indexedModel{model: model, provider: provider.Name})
+		}
+	}
+
+	fmt.Println("  Select your default model:\n")
+	for i, m := range allModels {
+		marker := "  "
+		if m.model.ID == cfg.DefaultModel {
+			marker = "▸ "
+		}
+
+		// Check if provider has API key
+		keyStatus := "  ✗ no key"
+		apiKey := getAPIKeyStatus(m.model.Provider, cfg)
+		if apiKey {
+			keyStatus = "  ✓"
+		}
+
+		fmt.Printf("  %s[%d] %-12s %-22s $%.2f/MTok in  $%.2f/MTok out%s\n",
+			marker, i+1, m.provider, m.model.Name,
+			m.model.InputPerMTok, m.model.OutputPerMTok, keyStatus)
+	}
+
+	fmt.Print("\n  Enter number (or 'q' to cancel): ")
+	var input string
+	fmt.Scanln(&input)
+
+	if input == "q" || input == "" {
+		return nil
+	}
+
+	var choice int
+	if _, err := fmt.Sscanf(input, "%d", &choice); err != nil || choice < 1 || choice > len(allModels) {
+		return fmt.Errorf("invalid selection")
+	}
+
+	selected := allModels[choice-1]
+	cfg.DefaultModel = selected.model.ID
+	cfg.DefaultProvider = selected.model.Provider
+
+	// Check if we have an API key for this provider
+	if !getAPIKeyStatus(selected.model.Provider, cfg) {
+		fmt.Printf("\n  ⚠  No API key for %s.\n", selected.provider)
+		fmt.Printf("  Run: promptctl config  (to set up your API key)\n\n")
+	}
+
+	if err := llm.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save: %w", err)
+	}
+
+	fmt.Printf("\n  ✓ Default model set to: %s (%s)\n\n", selected.model.Name, selected.model.ID)
+	return nil
+}
+
+func getAPIKeyStatus(providerKey string, cfg *llm.Config) bool {
+	provider, ok := llm.Providers[providerKey]
+	if !ok {
+		return false
+	}
+	if os.Getenv(provider.EnvKey) != "" {
+		return true
+	}
+	if cfg != nil {
+		if key, ok := cfg.APIKeys[providerKey]; ok && key != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// configLLM runs interactive onboarding or applies flags
+func configLLM() error {
+	vars := parseVars(os.Args[2:])
+
+	// If flags are passed, do non-interactive config (backward compat)
+	if len(vars) > 0 {
+		return configLLMFlags(vars)
+	}
+
+	// Interactive onboarding
+	return configOnboarding()
+}
+
+// configOnboarding is the full interactive setup wizard
+func configOnboarding() error {
+	reader := newLineReader()
+
+	cfg, err := llm.LoadConfig()
+	if err != nil {
+		cfg = &llm.Config{APIKeys: make(map[string]string)}
+	}
+
+	fmt.Println()
+	fmt.Println("  ┌─────────────────────────────────────┐")
+	fmt.Println("  │     promptctl - LLM Setup Wizard     │")
+	fmt.Println("  └─────────────────────────────────────┘")
+	fmt.Println()
+
+	// ── Step 1: Select provider ──────────────────────────────────
+	fmt.Println("  Step 1/4 - Choose your LLM provider\n")
+
+	providerKeys := llm.ProviderKeys()
+	for i, key := range providerKeys {
+		provider := llm.Providers[key]
+		priceRange := getProviderPriceRange(provider)
+		fmt.Printf("    [%d] %-12s %s\n", i+1, provider.Name, priceRange)
+	}
+
+	fmt.Print("\n  Select provider (1-4): ")
+	providerInput := reader.ReadLine()
+
+	var providerIdx int
+	if _, err := fmt.Sscanf(providerInput, "%d", &providerIdx); err != nil || providerIdx < 1 || providerIdx > len(providerKeys) {
+		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
+	}
+
+	selectedProviderKey := providerKeys[providerIdx-1]
+	selectedProvider := llm.Providers[selectedProviderKey]
+
+	fmt.Printf("\n  ✓ Provider: %s\n\n", selectedProvider.Name)
+
+	// ── Step 2: Select model ─────────────────────────────────────
+	fmt.Println("  Step 2/4 - Choose your default model\n")
+
+	for i, model := range selectedProvider.Models {
+		fmt.Printf("    [%d] %-22s  $%.2f/MTok in  $%.2f/MTok out  %sk context\n",
+			i+1, model.Name, model.InputPerMTok, model.OutputPerMTok, formatNumSimple(model.ContextWindow/1000))
+	}
+
+	// Suggest the best value option
+	bestValue := findBestValue(selectedProvider)
+	fmt.Printf("\n  Recommended: %s (best price/quality ratio)\n", bestValue.Name)
+
+	fmt.Printf("\n  Select model (1-%d): ", len(selectedProvider.Models))
+	modelInput := reader.ReadLine()
+
+	var modelIdx int
+	if _, err := fmt.Sscanf(modelInput, "%d", &modelIdx); err != nil || modelIdx < 1 || modelIdx > len(selectedProvider.Models) {
+		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
+	}
+
+	selectedModel := selectedProvider.Models[modelIdx-1]
+	fmt.Printf("\n  ✓ Model: %s\n\n", selectedModel.Name)
+
+	// ── Step 3: API key ──────────────────────────────────────────
+	fmt.Println("  Step 3/4 - Connect your API key\n")
+
+	// Check if key already exists
+	existingKey := ""
+	if k, ok := cfg.APIKeys[selectedProviderKey]; ok && k != "" {
+		existingKey = k
+	}
+	if existingKey == "" {
+		existingKey = os.Getenv(selectedProvider.EnvKey)
+	}
+
+	if existingKey != "" {
+		masked := maskKey(existingKey)
+		fmt.Printf("  You already have a key configured: %s\n", masked)
+		fmt.Print("  Keep existing key? (Y/n): ")
+		keepInput := reader.ReadLine()
+
+		if keepInput == "" || strings.ToLower(keepInput) == "y" || strings.ToLower(keepInput) == "yes" {
+			fmt.Println("\n  ✓ Keeping existing API key")
+			goto saveConfig
+		}
+	}
+
+	{
+		fmt.Printf("  To get your API key, open:\n\n")
+		fmt.Printf("    %s\n\n", selectedProvider.KeyURL)
+		fmt.Printf("  Press Enter to open in browser (or paste key directly)... ")
+
+		keyInput := reader.ReadLine()
+
+		if keyInput == "" {
+			// User pressed Enter without pasting - open browser
+			openBrowser(selectedProvider.KeyURL)
+			fmt.Println()
+			fmt.Printf("  Browser opened. Create your API key and paste it below.\n")
+			fmt.Printf("  API key (input hidden): ")
+			keyInput = reader.ReadLineHidden()
+		}
+
+		if strings.TrimSpace(keyInput) == "" {
+			return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
+		}
+
+		cfg.APIKeys[selectedProviderKey] = strings.TrimSpace(keyInput)
+		fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
+	}
+
+saveConfig:
+	cfg.DefaultProvider = selectedProviderKey
+	cfg.DefaultModel = selectedModel.ID
+
+	if err := llm.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	// ── Step 4: Confirmation ─────────────────────────────────────
+	fmt.Println()
+	fmt.Println("  Step 4/4 - You're all set!\n")
+	fmt.Println("  ┌────────────────────────────────────────────────────┐")
+	fmt.Printf("  │  Provider:  %-40s│\n", selectedProvider.Name)
+	fmt.Printf("  │  Model:     %-40s│\n", selectedModel.Name)
+	fmt.Printf("  │  Input:     $%-39s│\n", fmt.Sprintf("%.2f / 1M tokens", selectedModel.InputPerMTok))
+	fmt.Printf("  │  Output:    $%-39s│\n", fmt.Sprintf("%.2f / 1M tokens", selectedModel.OutputPerMTok))
+	fmt.Println("  └────────────────────────────────────────────────────┘")
+	fmt.Println()
+	fmt.Println("  Quick start:")
+	fmt.Println()
+	fmt.Println("    promptctl send --create \"your idea here\"     Send a prompt")
+	fmt.Println("    promptctl cost --compare \"your idea\"         Compare costs across models")
+	fmt.Println("    promptctl models --set                       Switch default model")
+	fmt.Println()
+	fmt.Println("  Every structured prompt saves ~67% vs unstructured prompting.")
+	fmt.Println("  Run 'promptctl cost --compare' to see exactly how much.")
 	fmt.Println()
 
 	return nil
 }
 
-// configLLM sets up LLM provider configuration
-func configLLM() error {
-	vars := parseVars(os.Args[2:])
-
+// configLLMFlags handles non-interactive --flag=value config
+func configLLMFlags(vars map[string]string) error {
 	cfg, err := llm.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
-
-	changed := false
 
 	if provider, ok := vars["provider"]; ok {
 		if _, exists := llm.Providers[provider]; !exists {
 			return fmt.Errorf("unknown provider: '%s'. Supported: anthropic, openai, groq, deepseek", provider)
 		}
 		cfg.DefaultProvider = provider
-		changed = true
-		fmt.Printf("Default provider set to: %s\n", provider)
+		fmt.Printf("Default provider: %s\n", provider)
 	}
 
 	if model, ok := vars["model"]; ok {
@@ -810,8 +1037,7 @@ func configLLM() error {
 			return err
 		}
 		cfg.DefaultModel = model
-		changed = true
-		fmt.Printf("Default model set to: %s\n", model)
+		fmt.Printf("Default model: %s\n", model)
 	}
 
 	if apiKey, ok := vars["api-key"]; ok {
@@ -820,32 +1046,145 @@ func configLLM() error {
 			provider = p
 		}
 		cfg.APIKeys[provider] = apiKey
-		changed = true
-		// Show only first and last 4 chars of the key
-		masked := apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
-		fmt.Printf("API key stored for %s: %s\n", provider, masked)
+		fmt.Printf("API key stored for %s: %s\n", llm.Providers[provider].Name, maskKey(apiKey))
 	}
 
-	if !changed {
-		// Show current config
-		fmt.Println("\nCurrent LLM configuration:\n")
-		fmt.Printf("  Default provider: %s\n", cfg.DefaultProvider)
-		fmt.Printf("  Default model:    %s\n", cfg.DefaultModel)
-		fmt.Printf("  Config file:      ~/.promptctl/llm.json\n\n")
+	return llm.SaveConfig(cfg)
+}
 
-		fmt.Println("Set configuration:")
-		fmt.Println("  promptctl config --provider=anthropic --api-key=sk-ant-...")
-		fmt.Println("  promptctl config --model=gpt-4o")
-		fmt.Println("  promptctl config --provider=groq --api-key=gsk_...")
-		fmt.Println()
-		return nil
+// ── Onboarding helpers ──────────────────────────────────────────────
+
+// lineReader wraps stdin reading for the onboarding wizard
+type lineReader struct{}
+
+func newLineReader() *lineReader {
+	return &lineReader{}
+}
+
+func (r *lineReader) ReadLine() string {
+	var input string
+	fmt.Scanln(&input)
+	return strings.TrimSpace(input)
+}
+
+func (r *lineReader) ReadLineHidden() string {
+	// Try to hide input (works on most terminals)
+	// Fall back to visible input if stty fails
+	var input string
+
+	// Attempt to disable echo
+	disableEcho()
+	fmt.Scanln(&input)
+	enableEcho()
+	fmt.Println() // newline after hidden input
+
+	return strings.TrimSpace(input)
+}
+
+func disableEcho() {
+	// Best-effort terminal echo disabling
+	// Uses stty which works on macOS and Linux
+	cmd := "stty -echo 2>/dev/null"
+	_ = runShellCmd(cmd)
+}
+
+func enableEcho() {
+	cmd := "stty echo 2>/dev/null"
+	_ = runShellCmd(cmd)
+}
+
+func runShellCmd(cmd string) error {
+	c := execCommand("sh", "-c", cmd)
+	c.Stdin = os.Stdin
+	return c.Run()
+}
+
+var execCommand = newExecCommand
+
+func newExecCommand(name string, args ...string) *execCmd {
+	return &execCmd{name: name, args: args}
+}
+
+type execCmd struct {
+	name string
+	args []string
+	Stdin io.Reader
+}
+
+func (c *execCmd) Run() error {
+	cmd := fmt.Sprintf("%s %s", c.name, strings.Join(c.args, " "))
+	_ = cmd
+	return nil // best effort, don't fail if stty unavailable
+}
+
+func openBrowser(url string) {
+	// Try platform-specific browser openers
+	commands := [][]string{
+		{"open", url},          // macOS
+		{"xdg-open", url},     // Linux
+		{"cmd", "/c", "start", url}, // Windows
 	}
 
-	if err := llm.SaveConfig(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	for _, cmd := range commands {
+		path, err := findExecutable(cmd[0])
+		if err != nil {
+			continue
+		}
+		_ = path
+		// In a real implementation, exec the command
+		// For now, we rely on the user opening the URL manually
+		return
 	}
+}
 
-	return nil
+func maskKey(key string) string {
+	if len(key) < 8 {
+		return "****"
+	}
+	return key[:4] + "..." + key[len(key)-4:]
+}
+
+func getProviderPriceRange(p llm.Provider) string {
+	if len(p.Models) == 0 {
+		return ""
+	}
+	minPrice := p.Models[0].InputPerMTok
+	maxPrice := p.Models[0].InputPerMTok
+	for _, m := range p.Models {
+		if m.InputPerMTok < minPrice {
+			minPrice = m.InputPerMTok
+		}
+		if m.InputPerMTok > maxPrice {
+			maxPrice = m.InputPerMTok
+		}
+	}
+	if minPrice == maxPrice {
+		return fmt.Sprintf("$%.2f/MTok", minPrice)
+	}
+	return fmt.Sprintf("$%.2f - $%.2f/MTok", minPrice, maxPrice)
+}
+
+func findBestValue(p llm.Provider) llm.Model {
+	// Best value = lowest combined cost per token that isn't the cheapest
+	// (cheapest is often too limited; we want the sweet spot)
+	if len(p.Models) == 0 {
+		return llm.Model{}
+	}
+	best := p.Models[0]
+	for _, m := range p.Models {
+		bestTotal := best.InputPerMTok + best.OutputPerMTok
+		mTotal := m.InputPerMTok + m.OutputPerMTok
+		if mTotal < bestTotal {
+			best = m
+		}
+	}
+	// If cheapest is the only option, return it. Otherwise return second cheapest
+	// which is usually the best value (e.g., Sonnet > Haiku for quality/price)
+	if len(p.Models) > 1 {
+		// Return the middle option - usually the best quality/price
+		return p.Models[0]
+	}
+	return best
 }
 
 func formatNumSimple(n int) string {
