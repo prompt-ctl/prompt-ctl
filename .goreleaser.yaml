@@ -63,7 +63,7 @@ brews:
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     # Formula metadata
     name: promptctl
-    homepage: "https://github.com/oleg-koval/promptctl"
+    homepage: "https://prompt-ctl.com"
     description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
     license: "MIT"
     # Where the formula lands in the tap repo
