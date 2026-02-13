@@ -396,7 +396,7 @@
             <div class="why-card">
                 <div class="num">10</div>
                 <h3>Models, one command</h3>
-                <p>Switch between Claude Sonnet, GPT-4o, Llama 70B, DeepSeek, and more. See cost comparison across all models before you send. Pick the cheapest model that fits your task.</p>
+                <p>Switch between Claude Sonnet 4.5, GPT-5, Llama 4 Maverick, DeepSeek, and more. See cost comparison across all models before you send. Pick the cheapest model that fits your task.</p>
                 <span class="price">promptctl cost --compare</span>
             </div>
             <div class="why-card">
@@ -505,8 +505,8 @@
             </div>
             <div class="pipe-card">
                 <h3>Direct send with cost tracking</h3>
-                <pre><span class="ps">$</span> promptctl send review --file=main.go --model=gpt-4o
-<span class="co"># Sending to GPT-4o...</span>
+                <pre><span class="ps">$</span> promptctl send review --file=main.go --model=gpt-5
+<span class="co"># Sending to GPT-5...</span>
 <span class="co"># Est. cost: $0.0125 (saves ~$0.025 vs unstructured)</span>
 <span class="co"># ... response ...</span>
 <span class="co"># Cost: $0.0118 | Tokens: 420 in / 1,240 out | 2.3s</span></pre>
@@ -542,16 +542,18 @@
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Claude Sonnet 4</td><td>$0.0183</td><td class="waste">$0.0549</td><td class="savings">67% ($0.037)</td></tr>
-                <tr><td>GPT-4o</td><td>$0.0125</td><td class="waste">$0.0375</td><td class="savings">67% ($0.025)</td></tr>
-                <tr><td>Claude Haiku 4.5</td><td>$0.0049</td><td class="waste">$0.0147</td><td class="savings">67% ($0.010)</td></tr>
-                <tr><td>GPT-4o Mini</td><td>$0.0007</td><td class="waste">$0.0022</td><td class="savings">67% ($0.002)</td></tr>
-                <tr><td>Llama 3.3 70B</td><td>$0.0012</td><td class="waste">$0.0036</td><td class="savings">67% ($0.002)</td></tr>
-                <tr><td>DeepSeek V3</td><td>$0.0014</td><td class="waste">$0.0041</td><td class="savings">67% ($0.003)</td></tr>
+                <tr><td>Claude Sonnet 4.5</td><td>$0.0197</td><td class="waste">$0.0590</td><td class="savings">67% ($0.039)</td></tr>
+                <tr><td>Claude Haiku 4.5</td><td>$0.0066</td><td class="waste">$0.0197</td><td class="savings">67% ($0.013)</td></tr>
+                <tr><td>Claude Opus 4.6</td><td>$0.0328</td><td class="waste">$0.0983</td><td class="savings">67% ($0.066)</td></tr>
+                <tr><td>GPT-5</td><td>$0.0127</td><td class="waste">$0.0381</td><td class="savings">67% ($0.025)</td></tr>
+                <tr><td>GPT-5.2</td><td>$0.0178</td><td class="waste">$0.0533</td><td class="savings">67% ($0.036)</td></tr>
+                <tr><td>Llama 4 Maverick (Groq)</td><td>$0.0008</td><td class="waste">$0.0025</td><td class="savings">67% ($0.002)</td></tr>
+                <tr><td>DeepSeek Chat</td><td>$0.0007</td><td class="waste">$0.0020</td><td class="savings">67% ($0.001)</td></tr>
+                <tr><td>Gemini 2.5 Pro</td><td>$0.0127</td><td class="waste">$0.0381</td><td class="savings">67% ($0.025)</td></tr>
             </tbody>
         </table>
         <p style="color:var(--text-3);font-size:12px;font-family:var(--mono);margin-top:16px">
-            Based on a ~550 token structured prompt. Unstructured estimate includes avg. 3x rework factor.
+            Based on a ~550 token structured prompt, ~1,200 output tokens. Unstructured estimate includes avg. 3× rework factor. Pricing as of 2026-02-13.
         </p>
     </div>
 </section>

@@ -65,7 +65,7 @@ type Config struct {
 }
 
 // -----------------------------------------------------------------------
-// Supported providers and models with current pricing (as of early 2025)
+// Supported providers and models with current pricing (as of Feb 2026)
 // -----------------------------------------------------------------------
 
 var Providers = map[string]Provider{
@@ -76,9 +76,9 @@ var Providers = map[string]Provider{
 		KeyURL:  "https://console.anthropic.com/settings/keys",
 		Order:   1,
 		Models: []Model{
-			{ID: "claude-sonnet-4-20250514", Name: "Claude Sonnet 4", InputPerMTok: 3.0, OutputPerMTok: 15.0, ContextWindow: 200000, Provider: "anthropic"},
-			{ID: "claude-haiku-4-5-20251001", Name: "Claude Haiku 4.5", InputPerMTok: 0.80, OutputPerMTok: 4.0, ContextWindow: 200000, Provider: "anthropic"},
-			{ID: "claude-opus-4-6", Name: "Claude Opus 4.6", InputPerMTok: 15.0, OutputPerMTok: 75.0, ContextWindow: 200000, Provider: "anthropic"},
+			{ID: "claude-sonnet-4-5-20250929", Name: "Claude Sonnet 4.5", InputPerMTok: 3.0, OutputPerMTok: 15.0, ContextWindow: 200000, Provider: "anthropic"},
+			{ID: "claude-haiku-4-5-20251001", Name: "Claude Haiku 4.5", InputPerMTok: 1.0, OutputPerMTok: 5.0, ContextWindow: 200000, Provider: "anthropic"},
+			{ID: "claude-opus-4-6", Name: "Claude Opus 4.6", InputPerMTok: 5.0, OutputPerMTok: 25.0, ContextWindow: 200000, Provider: "anthropic"},
 		},
 	},
 	"openai": {
@@ -88,9 +88,8 @@ var Providers = map[string]Provider{
 		KeyURL:  "https://platform.openai.com/api-keys",
 		Order:   2,
 		Models: []Model{
-			{ID: "gpt-4o", Name: "GPT-4o", InputPerMTok: 2.50, OutputPerMTok: 10.0, ContextWindow: 128000, Provider: "openai"},
-			{ID: "gpt-4o-mini", Name: "GPT-4o Mini", InputPerMTok: 0.15, OutputPerMTok: 0.60, ContextWindow: 128000, Provider: "openai"},
-			{ID: "o3-mini", Name: "o3-mini", InputPerMTok: 1.10, OutputPerMTok: 4.40, ContextWindow: 200000, Provider: "openai"},
+			{ID: "gpt-5", Name: "GPT-5", InputPerMTok: 1.25, OutputPerMTok: 10.0, ContextWindow: 128000, Provider: "openai"},
+			{ID: "gpt-5.2", Name: "GPT-5.2", InputPerMTok: 1.75, OutputPerMTok: 14.0, ContextWindow: 128000, Provider: "openai"},
 		},
 	},
 	"groq": {
@@ -100,6 +99,7 @@ var Providers = map[string]Provider{
 		KeyURL:  "https://console.groq.com/keys",
 		Order:   3,
 		Models: []Model{
+			{ID: "meta-llama/llama-4-maverick-17b-128e-instruct", Name: "Llama 4 Maverick", InputPerMTok: 0.20, OutputPerMTok: 0.60, ContextWindow: 128000, Provider: "groq"},
 			{ID: "llama-3.3-70b-versatile", Name: "Llama 3.3 70B", InputPerMTok: 0.59, OutputPerMTok: 0.79, ContextWindow: 128000, Provider: "groq"},
 			{ID: "mixtral-8x7b-32768", Name: "Mixtral 8x7B", InputPerMTok: 0.24, OutputPerMTok: 0.24, ContextWindow: 32768, Provider: "groq"},
 		},
@@ -111,7 +111,7 @@ var Providers = map[string]Provider{
 		KeyURL:  "https://platform.deepseek.com/api_keys",
 		Order:   4,
 		Models: []Model{
-			{ID: "deepseek-chat", Name: "DeepSeek V3", InputPerMTok: 0.27, OutputPerMTok: 1.10, ContextWindow: 64000, Provider: "deepseek"},
+			{ID: "deepseek-chat", Name: "DeepSeek Chat (V3.2)", InputPerMTok: 0.28, OutputPerMTok: 0.42, ContextWindow: 64000, Provider: "deepseek"},
 			{ID: "deepseek-reasoner", Name: "DeepSeek R1", InputPerMTok: 0.55, OutputPerMTok: 2.19, ContextWindow: 64000, Provider: "deepseek"},
 		},
 	},
@@ -444,7 +444,7 @@ func LoadConfig() (*Config, error) {
 		if os.IsNotExist(err) {
 			return &Config{
 				DefaultProvider: "anthropic",
-				DefaultModel:    "claude-sonnet-4-20250514",
+				DefaultModel:    "claude-sonnet-4-5-20250929",
 				APIKeys:         make(map[string]string),
 			}, nil
 		}
