@@ -64,6 +64,9 @@ type Config struct {
 	APIKeys         map[string]string `json:"api_keys"`
 }
 
+// MaxLLMResponseBytes is the maximum response body size for LLM API calls (memory safety).
+const MaxLLMResponseBytes = 8 * 1024 * 1024 // 8 MB
+
 // -----------------------------------------------------------------------
 // Supported providers and models with current pricing (as of Feb 2026)
 // -----------------------------------------------------------------------
@@ -321,7 +324,7 @@ func callAnthropic(baseURL, apiKey string, model Model, prompt string) (*Complet
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxLLMResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
@@ -391,7 +394,7 @@ func callOpenAICompatible(baseURL, apiKey string, model Model, prompt string) (*
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxLLMResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}

@@ -6,14 +6,35 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
 
+// MaxEnhanceResponseBytes is the maximum response body size for the enhance API (SSRF/memory safety).
+const MaxEnhanceResponseBytes = 2 * 1024 * 1024 // 2 MB
+
 // EnhanceViaAPI calls the hosted enhance endpoint (e.g. Cloudflare Worker) and returns the result.
 // Returns an error on network failure, non-2xx, or invalid JSON.
+// Only HTTPS URLs are allowed (SSRF protection).
 func EnhanceViaAPI(baseURL string, cfg EnhanceConfig) (*EnhanceResult, error) {
+	return EnhanceViaAPIWithClient(baseURL, cfg, nil)
+}
+
+// EnhanceViaAPIWithClient is like EnhanceViaAPI but uses the given http.Client (for tests).
+// If client is nil, uses default client.
+func EnhanceViaAPIWithClient(baseURL string, cfg EnhanceConfig, client *http.Client) (*EnhanceResult, error) {
 	baseURL = strings.TrimSuffix(baseURL, "/")
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, fmt.Errorf("enhance API: invalid URL: %w", err)
+	}
+	if u.Scheme != "https" {
+		return nil, fmt.Errorf("enhance API: URL must use HTTPS (got %q)", u.Scheme)
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("enhance API: URL must have a host")
+	}
 	format := cfg.OutputFormat
 	if format == "" {
 		format = "xml"
@@ -46,14 +67,16 @@ func EnhanceViaAPI(baseURL string, cfg EnhanceConfig) (*EnhanceResult, error) {
 		req.Header.Set("User-Agent", "promptctl/"+cfg.ClientVersion)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("enhance API: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxEnhanceResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("enhance API: read response: %w", err)
 	}

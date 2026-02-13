@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/internal/safepath"
 	"github.com/oleg-koval/promptctl/llm"
 	"github.com/oleg-koval/promptctl/prompt"
 )
@@ -146,6 +148,9 @@ func createPrompt() error {
 
 	// If --save was specified, write as a reusable template
 	if saveName != "" && result.Template != "" {
+		if !prompt.IsValidTemplateName(saveName) {
+			return fmt.Errorf("invalid save name: %q (use only letters, numbers, hyphen, underscore)", saveName)
+		}
 		dir := appCfg.GlobalTemplateDir
 		if hasFlag("--local") {
 			dir = appCfg.LocalTemplateDir
@@ -187,23 +192,45 @@ func runPrompt() error {
 
 	// If the template has a --file variable, read the file content
 	if filePath, ok := vars["file"]; ok {
-		content, err := os.ReadFile(filePath)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+		safePath, err := safepath.SafeFilePath(cwd, filePath)
+		if err != nil {
+			if errors.Is(err, safepath.ErrPathOutsideBase) {
+				return fmt.Errorf("file path must be under current directory: %s", filePath)
+			}
+			return fmt.Errorf("failed to read file '%s': %w", filePath, err)
+		}
+		content, err := os.ReadFile(safePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file '%s': %w", filePath, err)
 		}
 		vars["file_content"] = string(content)
-		vars["file_name"] = filepath.Base(filePath)
-		vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+		vars["file_name"] = filepath.Base(safePath)
+		vars["file_ext"] = strings.TrimPrefix(filepath.Ext(safePath), ".")
 	}
 
 	// If the template has a --dir variable, list directory contents
 	if dirPath, ok := vars["dir"]; ok {
-		entries, err := listDir(dirPath, 2)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+		safePath, err := safepath.SafeDirPath(cwd, dirPath)
+		if err != nil {
+			if errors.Is(err, safepath.ErrPathOutsideBase) {
+				return fmt.Errorf("directory path must be under current directory: %s", dirPath)
+			}
+			return fmt.Errorf("failed to read directory '%s': %w", dirPath, err)
+		}
+		entries, err := listDir(safePath, 2)
 		if err != nil {
 			return fmt.Errorf("failed to read directory '%s': %w", dirPath, err)
 		}
 		vars["dir_content"] = entries
-		vars["dir_name"] = filepath.Base(dirPath)
+		vars["dir_name"] = filepath.Base(safePath)
 	}
 
 	rendered, err := tmpl.Render(vars)
@@ -251,6 +278,9 @@ func addPrompt() error {
 	}
 
 	name := os.Args[2]
+	if !prompt.IsValidTemplateName(name) {
+		return fmt.Errorf("invalid template name: %q (use only letters, numbers, hyphen, underscore)", name)
+	}
 	local := hasFlag("--local")
 
 	cfg, err := config.Load()
@@ -357,13 +387,24 @@ func copyPrompt() error {
 
 	// Read file if provided
 	if filePath, ok := vars["file"]; ok {
-		content, err := os.ReadFile(filePath)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+		safePath, err := safepath.SafeFilePath(cwd, filePath)
+		if err != nil {
+			if errors.Is(err, safepath.ErrPathOutsideBase) {
+				return fmt.Errorf("file path must be under current directory: %s", filePath)
+			}
+			return fmt.Errorf("failed to read file '%s': %w", filePath, err)
+		}
+		content, err := os.ReadFile(safePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file '%s': %w", filePath, err)
 		}
 		vars["file_content"] = string(content)
-		vars["file_name"] = filepath.Base(filePath)
-		vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+		vars["file_name"] = filepath.Base(safePath)
+		vars["file_ext"] = strings.TrimPrefix(filepath.Ext(safePath), ".")
 	}
 
 	rendered, err := tmpl.Render(vars)
@@ -598,13 +639,24 @@ Examples:
 
 		// Handle file reading
 		if filePath, ok := vars["file"]; ok {
-			content, err := os.ReadFile(filePath)
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("failed to get working directory: %w", err)
+			}
+			safePath, err := safepath.SafeFilePath(cwd, filePath)
+			if err != nil {
+				if errors.Is(err, safepath.ErrPathOutsideBase) {
+					return fmt.Errorf("file path must be under current directory: %s", filePath)
+				}
+				return fmt.Errorf("failed to read file '%s': %w", filePath, err)
+			}
+			content, err := os.ReadFile(safePath)
 			if err != nil {
 				return fmt.Errorf("failed to read file '%s': %w", filePath, err)
 			}
 			vars["file_content"] = string(content)
-			vars["file_name"] = filepath.Base(filePath)
-			vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+			vars["file_name"] = filepath.Base(safePath)
+			vars["file_ext"] = strings.TrimPrefix(filepath.Ext(safePath), ".")
 		}
 
 		renderedPrompt, err = tmpl.Render(vars)
@@ -717,13 +769,24 @@ Options:
 		} else {
 			// Handle file reading for accurate estimation
 			if filePath, ok := vars["file"]; ok {
-				content, err := os.ReadFile(filePath)
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("failed to get working directory: %w", err)
+				}
+				safePath, err := safepath.SafeFilePath(cwd, filePath)
+				if err != nil {
+					if errors.Is(err, safepath.ErrPathOutsideBase) {
+						return fmt.Errorf("file path must be under current directory: %s", filePath)
+					}
+					return fmt.Errorf("failed to read file '%s': %w", filePath, err)
+				}
+				content, err := os.ReadFile(safePath)
 				if err != nil {
 					return fmt.Errorf("failed to read file: %w", err)
 				}
 				vars["file_content"] = string(content)
-				vars["file_name"] = filepath.Base(filePath)
-				vars["file_ext"] = strings.TrimPrefix(filepath.Ext(filePath), ".")
+				vars["file_name"] = filepath.Base(safePath)
+				vars["file_ext"] = strings.TrimPrefix(filepath.Ext(safePath), ".")
 			}
 
 			renderedPrompt, err = tmpl.Render(vars)

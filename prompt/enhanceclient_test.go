@@ -1,14 +1,25 @@
 package prompt
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
+// tlsTestClient returns an http.Client that skips TLS verify (for httptest.NewTLSServer).
+func tlsTestClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+}
+
 func TestEnhanceViaAPI_Success(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" || r.URL.Path != "/enhance" {
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
@@ -30,10 +41,10 @@ func TestEnhanceViaAPI_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := EnhanceViaAPI(server.URL, EnhanceConfig{
+	result, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{
 		Intent:       "review my code",
 		OutputFormat: "xml",
-	})
+	}, tlsTestClient())
 	if err != nil {
 		t.Fatalf("EnhanceViaAPI err = %v", err)
 	}
@@ -43,72 +54,72 @@ func TestEnhanceViaAPI_Success(t *testing.T) {
 }
 
 func TestEnhanceViaAPI_EmptyPromptInResponse(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"prompt": ""})
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"}, tlsTestClient())
 	if err == nil {
 		t.Fatal("expected error for empty prompt in response")
 	}
 }
 
 func TestEnhanceViaAPI_HTTPError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("server error"))
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"}, tlsTestClient())
 	if err == nil {
 		t.Fatal("expected error for 500 response")
 	}
 }
 
 func TestEnhanceViaAPI_413(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusRequestEntityTooLarge)
 		w.Write([]byte("body too large"))
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"}, tlsTestClient())
 	if err == nil {
 		t.Fatal("expected error for 413 response")
 	}
 }
 
 func TestEnhanceViaAPI_429(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte("rate limited"))
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"}, tlsTestClient())
 	if err == nil {
 		t.Fatal("expected error for 429 response")
 	}
 }
 
 func TestEnhanceViaAPI_InvalidJSON(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte("not json"))
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"}, tlsTestClient())
 	if err == nil {
 		t.Fatal("expected error for invalid JSON response")
 	}
 }
 
 func TestEnhanceViaAPI_DefaultFormat(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Format string `json:"format"`
 		}
@@ -121,8 +132,24 @@ func TestEnhanceViaAPI_DefaultFormat(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x"})
+	_, err := EnhanceViaAPIWithClient(server.URL, EnhanceConfig{Intent: "x"}, tlsTestClient())
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEnhanceViaAPI_RejectsHTTP(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"prompt": "ok"})
+	}))
+	defer server.Close()
+
+	_, err := EnhanceViaAPI(server.URL, EnhanceConfig{Intent: "x", OutputFormat: "xml"})
+	if err == nil {
+		t.Fatal("expected error for http URL")
+	}
+	if err != nil && !strings.Contains(err.Error(), "HTTPS") {
+		t.Errorf("error should mention HTTPS, got: %v", err)
 	}
 }

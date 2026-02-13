@@ -93,9 +93,26 @@ func (t *Template) Render(vars map[string]string) (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
+// IsValidTemplateName returns true if name is safe (no path traversal).
+// Allows only alphanumeric, underscore, and hyphen.
+func IsValidTemplateName(name string) bool {
+	if name == "" || len(name) > 128 {
+		return false
+	}
+	for _, r := range name {
+		if r != '-' && r != '_' && !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+			return false
+		}
+	}
+	return true
+}
+
 // LoadTemplate finds and parses a template by name
 // Local templates take precedence over global ones
 func LoadTemplate(name string, cfg *config.Config) (*Template, error) {
+	if !IsValidTemplateName(name) {
+		return nil, fmt.Errorf("invalid template name: %q", name)
+	}
 	// Check local first, then global
 	dirs := []struct {
 		dir     string
@@ -117,6 +134,9 @@ func LoadTemplate(name string, cfg *config.Config) (*Template, error) {
 
 // FindTemplatePath returns the filesystem path of a template
 func FindTemplatePath(name string, cfg *config.Config) (string, error) {
+	if !IsValidTemplateName(name) {
+		return "", fmt.Errorf("invalid template name: %q", name)
+	}
 	dirs := []string{cfg.LocalTemplateDir, cfg.GlobalTemplateDir}
 	for _, dir := range dirs {
 		path := filepath.Join(dir, name+".yaml")
@@ -151,6 +171,9 @@ func ListTemplates(cfg *config.Config) ([]TemplateInfo, error) {
 			}
 
 			name := strings.TrimSuffix(entry.Name(), ".yaml")
+			if !IsValidTemplateName(name) {
+				continue // skip path-traversal or invalid names
+			}
 			if seen[name] {
 				continue // local already registered
 			}

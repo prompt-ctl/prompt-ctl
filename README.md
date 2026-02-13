@@ -124,9 +124,12 @@ export PROMPTCTL_ENHANCE=rule
 promptctl create "review my auth code"
 ```
 
-To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.dev` (see [worker/](worker/)). The default hosted Worker applies request limits (e.g. 4000 chars intent, 32 KiB body) and optional analytics.
+To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.dev` (see [worker/](worker/)). The URL must use HTTPS. The default hosted Worker applies request limits (e.g. 4000 chars intent, 32 KiB body) and optional analytics.
 
-Do not commit API keys or webhook URLs; use environment variables or Cloudflare secrets.
+**Security & configuration**
+- Do not commit API keys or webhook URLs; use environment variables or Cloudflare secrets.
+- Prefer interactive `promptctl config` or setting the provider’s env var (e.g. `ANTHROPIC_API_KEY`) so the key is not stored in shell history. Using `promptctl config --api-key=sk-...` on the command line can expose the key in history.
+- Paths for `--file` and `--dir` must be under the current working directory (path traversal is rejected).
 
 ## Project-Level Templates
 
