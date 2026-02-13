@@ -55,7 +55,8 @@ changelog:
       - "^ci:"
       - "^chore:"
 
-# Homebrew Cask (brews deprecated in favor of homebrew_casks since v2.10)
+# Homebrew Cask: binaries are served from public promptctl-releases repo so anyone can brew install.
+# skip_upload: we push the cask in the workflow after copying release to public repo.
 homebrew_casks:
   - repository:
       owner: oleg-koval
@@ -65,8 +66,10 @@ homebrew_casks:
     homepage: "https://prompt-ctl.com"
     description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
     license: "MIT"
+    skip_upload: true
     url:
-      verified: "github.com/oleg-koval/promptctl/"
+      template: "https://github.com/oleg-koval/promptctl-releases/releases/download/{{.Tag}}/{{.ArtifactName}}"
+      verified: "github.com/oleg-koval/promptctl-releases/"
     binaries:
       - promptctl
     # Remove quarantine so unsigned binary runs on macOS

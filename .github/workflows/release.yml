@@ -1,6 +1,6 @@
 # .github/workflows/release.yml
-# Triggers on version tags (v1.0.0, v0.2.1, etc.)
-# Builds cross-platform binaries and publishes Homebrew formula
+# On tag push: build, release on private repo, copy binaries to public promptctl-releases, push cask to tap.
+# So brew install works for everyone while the main repo stays private.
 
 name: Release
 
@@ -16,22 +16,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out the code at the tagged commit
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # GoReleaser needs full git history for changelog
+          fetch-depth: 0
 
-      # Step 2: Set up Go
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
 
-      # Step 3: Run GoReleaser - this does everything:
-      #   - Builds binaries for all platforms
-      #   - Creates GitHub Release with changelog
-      #   - Generates and pushes Homebrew formula to your tap repo
+      # Build, create release on private repo, generate cask (skip_upload so we push cask later)
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -40,3 +35,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      # Copy release assets to public repo so brew install works without a token
+      - name: Publish to public releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          shopt -s nullglob
+          ARTIFACTS=(dist/*.tar.gz dist/*.zip)
+          gh release create "$TAG" \
+            --repo oleg-koval/promptctl-releases \
+            --title "$TAG" \
+            --notes "See [promptctl](https://github.com/oleg-koval/promptctl) (private)." \
+            "${ARTIFACTS[@]}"
+
+      # Push generated cask to tap (cask URL points at promptctl-releases)
+      - name: Push cask to tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          git clone --depth 1 "https://${GH_TOKEN}@github.com/oleg-koval/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          cp dist/homebrew/Casks/promptctl.rb tap/Casks/
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/promptctl.rb
+          git diff --staged --quiet || (git commit -m "promptctl ${TAG}" && git push)
