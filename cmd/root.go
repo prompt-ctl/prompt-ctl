@@ -12,7 +12,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.1.0"
+const version = "0.3.1"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -91,7 +91,7 @@ LLM CONFIGURATION:
 
 EXAMPLES:
   promptctl create "analyze my SaaS idea, be critical"
-  promptctl send review --file=auth.ts --model=gpt-4o
+  promptctl send review --file=auth.ts --model=gpt-5
   promptctl cost review --file=main.go --compare
   promptctl config --provider=anthropic --api-key=sk-ant-...
 
@@ -545,8 +545,8 @@ func sendPrompt() error {
   promptctl send --create "your intent here" [--model=MODEL]
 
 Examples:
-  promptctl send review --file=auth.ts --model=claude-sonnet-4
-  promptctl send --create "analyze my startup idea about X" --model=gpt-4o`)
+  promptctl send review --file=auth.ts --model=claude-sonnet-4.5
+  promptctl send --create "analyze my startup idea about X" --model=gpt-5`)
 	}
 
 	vars := parseVars(os.Args[2:])
@@ -557,7 +557,7 @@ Examples:
 			modelID = cfg.DefaultModel
 		}
 		if modelID == "" {
-			modelID = "claude-sonnet-4-20250514"
+			modelID = "claude-sonnet-4-5-20250929"
 		}
 	}
 	delete(vars, "model")
@@ -648,14 +648,14 @@ func showCost() error {
   promptctl cost --compare "your intent here"
 
 Options:
-  --model=MODEL     Specific model to estimate for (default: claude-sonnet-4)
+  --model=MODEL     Specific model to estimate for (default: claude-sonnet-4.5)
   --compare         Show cost comparison across all supported models`)
 	}
 
 	vars := parseVars(os.Args[2:])
 	modelID := vars["model"]
 	if modelID == "" {
-		modelID = "claude-sonnet-4-20250514"
+		modelID = "claude-sonnet-4-5-20250929"
 	}
 
 	var renderedPrompt string
@@ -758,7 +758,7 @@ Options:
 func listModels() error {
 	cfg, _ := llm.LoadConfig()
 	if cfg == nil {
-		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-20250514", APIKeys: make(map[string]string)}
+		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-5-20250929", APIKeys: make(map[string]string)}
 	}
 
 	fmt.Println("\n  Supported models:\n")
