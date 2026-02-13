@@ -93,6 +93,21 @@ func (t *Template) Render(vars map[string]string) (string, error) {
 	return strings.TrimSpace(result), nil
 }
 
+// MinimalTemplate returns a valid YAML template with the given name and body.
+// Used when saving to memory without an existing Template (e.g. rule-based enhance).
+func MinimalTemplate(name, body string) string {
+	lines := strings.Split(body, "\n")
+	for i := range lines {
+		lines[i] = "  " + lines[i]
+	}
+	return fmt.Sprintf(`name: %s
+description: Saved from create
+
+body: |
+%s
+`, name, strings.Join(lines, "\n"))
+}
+
 // IsValidTemplateName returns true if name is safe (no path traversal).
 // Allows only alphanumeric, underscore, and hyphen.
 func IsValidTemplateName(name string) bool {

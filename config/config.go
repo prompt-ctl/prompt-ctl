@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // DefaultEnhanceURL is the hosted promptctl-enhance Worker used when PROMPTCTL_ENHANCE=llm and PROMPTCTL_ENHANCE_URL is unset.
@@ -13,7 +14,10 @@ type Config struct {
 	GlobalTemplateDir string
 	LocalTemplateDir  string
 	GlobalConfigFile  string
-	DefaultVars       map[string]string
+	// PromptsDir is where saved prompts (memory) are stored. Defaults to GlobalTemplateDir.
+	// Override with PROMPTCTL_PROMPTS_DIR or ~/.promptctl/prompts_dir file.
+	PromptsDir   string
+	DefaultVars  map[string]string
 	// EnhanceURL is the optional LLM enhance API endpoint (e.g. Cloudflare Worker). Set with PROMPTCTL_ENHANCE_URL.
 	EnhanceURL string
 	// EnhanceMode is "llm" (default, uses hosted Worker) or "rule" (offline). Set with PROMPTCTL_ENHANCE.
@@ -32,13 +36,22 @@ func Load() (*Config, error) {
 	globalDir := filepath.Join(home, ".promptctl")
 	localDir := findLocalConfig()
 
+	globalTemplates := filepath.Join(globalDir, "templates")
 	cfg := &Config{
-		GlobalTemplateDir: filepath.Join(globalDir, "templates"),
+		GlobalTemplateDir: globalTemplates,
 		LocalTemplateDir:  filepath.Join(localDir, "templates"),
 		GlobalConfigFile:  filepath.Join(globalDir, "config.yaml"),
+		PromptsDir:        globalTemplates, // default
 		DefaultVars:       make(map[string]string),
 		EnhanceURL:        os.Getenv("PROMPTCTL_ENHANCE_URL"),
 		EnhanceMode:       os.Getenv("PROMPTCTL_ENHANCE"),
+	}
+	if d := os.Getenv("PROMPTCTL_PROMPTS_DIR"); d != "" {
+		cfg.PromptsDir = strings.TrimSpace(d)
+	} else if b, err := os.ReadFile(filepath.Join(globalDir, "prompts_dir")); err == nil {
+		if p := strings.TrimSpace(string(b)); p != "" {
+			cfg.PromptsDir = p
+		}
 	}
 	if cfg.EnhanceMode == "" {
 		cfg.EnhanceMode = "llm"
@@ -48,6 +61,20 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// SavePromptsDir persists the prompts directory path to ~/.promptctl/prompts_dir.
+func SavePromptsDir(dir string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	globalDir := filepath.Join(home, ".promptctl")
+	if err := os.MkdirAll(globalDir, 0755); err != nil {
+		return err
+	}
+	path := filepath.Join(globalDir, "prompts_dir")
+	return os.WriteFile(path, []byte(dir+"\n"), 0644)
 }
 
 // InitGlobal creates the global promptctl directory with starter templates

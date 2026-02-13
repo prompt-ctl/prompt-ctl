@@ -126,7 +126,7 @@ promptctl create "review my auth code"
 
 To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.dev` (see [worker/](worker/)). The URL must use HTTPS. The default hosted Worker applies request limits (e.g. 4000 chars intent, 32 KiB body) and optional analytics.
 
-**Quality score and tuning**  
+**Quality score and tuning**
 When using the LLM enhancer, a **quality score (0–100)** is printed to stderr. It measures fidelity (your specific terms preserved in the output), absence of duplicate sections, and required structure. Use `promptctl create "intent" --score` to show the score for rule-based enhance too. If the score is low or the output is too generic, try: (1) `PROMPTCTL_ENHANCE=rule` for long or detailed intents (no LLM), or (2) shorten the intent and add specifics in a follow-up.
 
 **Security & configuration**

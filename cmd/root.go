@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/oleg-koval/promptctl/config"
@@ -52,6 +55,23 @@ func Execute() error {
 		return initConfig()
 	case "vars":
 		return showVars()
+	case "memory":
+		if len(os.Args) < 3 {
+			return fmt.Errorf("usage: promptctl memory list | open | set-dir <path>")
+		}
+		switch os.Args[2] {
+		case "list":
+			return memoryList()
+		case "open":
+			return memoryOpen()
+		case "set-dir":
+			if len(os.Args) < 4 {
+				return fmt.Errorf("usage: promptctl memory set-dir <path>")
+			}
+			return memorySetDir(os.Args[3])
+		default:
+			return fmt.Errorf("usage: promptctl memory list | open | set-dir <path>")
+		}
 	case "version", "-v", "--version":
 		fmt.Printf("promptctl v%s\n", version)
 		return nil
@@ -85,6 +105,11 @@ TEMPLATE MANAGEMENT:
   show <n>         Display template content and metadata
   copy <n>         Copy rendered prompt to clipboard (alias: cp)
   vars <n>         Show variables required by a template
+
+MEMORY (saved prompts):
+  memory list       List saved prompts
+  memory open       Open folder with prompts in file manager
+  memory set-dir <path>  Set folder where prompts are saved
 
 LLM CONFIGURATION:
   models              List all supported models with pricing
@@ -160,9 +185,14 @@ func createPrompt() error {
 
 	fmt.Println(result.Prompt)
 
-	// Ask user to rate output when running interactively (stdin is a TTY)
-	if !hasFlag("--no-rate") && stdinIsTerminal() {
+	// Ask user to rate output when running interactively (stdin and stdout are TTYs; skip when piped)
+	if !hasFlag("--no-rate") && interactive() {
 		askUserRating()
+	}
+
+	// When interactive and no --save, offer to save to memory (skip when stdout is piped)
+	if saveName == "" && result.Prompt != "" && interactive() {
+		askSaveToMemory(result, appCfg)
 	}
 
 	// If --save was specified, write as a reusable template
@@ -287,6 +317,79 @@ func listPrompts() error {
 		fmt.Printf("  %-20s %-8s %s\n", t.Name, "["+scope+"]", t.Description)
 	}
 
+	return nil
+}
+
+// memoryList lists saved prompts in PromptsDir (flat and one level of folders).
+func memoryList() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	entries, err := prompt.ListPromptsInDir(cfg.PromptsDir)
+	if err != nil {
+		return fmt.Errorf("failed to list prompts: %w", err)
+	}
+	if len(entries) == 0 {
+		fmt.Println("No saved prompts. Use 'promptctl create \"...\"' and choose to save to memory.")
+		return nil
+	}
+	fmt.Print("Saved prompts:\n")
+	for _, e := range entries {
+		if e.Folder != "" {
+			fmt.Printf("  %s/%s\n", e.Folder, e.Name)
+		} else {
+			fmt.Printf("  %s\n", e.Name)
+		}
+	}
+	return nil
+}
+
+// memoryOpen opens the prompts directory in the OS file manager.
+func memoryOpen() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	dir := cfg.PromptsDir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create prompts dir: %w", err)
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve path: %w", err)
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", abs)
+	case "linux":
+		cmd = exec.Command("xdg-open", abs)
+	case "windows":
+		cmd = exec.Command("explorer", abs)
+	default:
+		return fmt.Errorf("open folder not supported on %s", runtime.GOOS)
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to open folder: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "Opened %s\n", abs)
+	return nil
+}
+
+// memorySetDir sets and persists the prompts directory.
+func memorySetDir(path string) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("invalid path: %w", err)
+	}
+	if err := os.MkdirAll(abs, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+	if err := config.SavePromptsDir(abs); err != nil {
+		return fmt.Errorf("failed to save setting: %w", err)
+	}
+	fmt.Printf("Prompts directory set to %s\n", abs)
 	return nil
 }
 
@@ -539,6 +642,20 @@ func stdinIsTerminal() bool {
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
+// stdoutIsTerminal returns true if stdout is a character device (not a pipe).
+func stdoutIsTerminal() bool {
+	stat, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
+// interactive returns true when both stdin and stdout are terminals (no piping).
+func interactive() bool {
+	return stdinIsTerminal() && stdoutIsTerminal()
+}
+
 // askUserRating prompts for a 1-5 rating on stderr and thanks the user.
 func askUserRating() {
 	fmt.Fprint(os.Stderr, "\nRate this output (1-5, Enter to skip): ")
@@ -554,6 +671,72 @@ func askUserRating() {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "Thanks — %d/5.\n", n)
+}
+
+// readLineStdin reads one line from stdin (trimmed). Used for interactive prompts.
+func readLineStdin() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
+	}
+	return ""
+}
+
+// askSaveToMemory prompts interactively to save the enhanced prompt to memory (PromptsDir).
+func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
+	fmt.Fprint(os.Stderr, "\nSave to memory? (y/n): ")
+	ans := readLineStdin()
+	if ans != "y" && ans != "Y" {
+		return
+	}
+	fmt.Fprint(os.Stderr, "Folder name (optional, Enter to skip): ")
+	folder := strings.ReplaceAll(readLineStdin(), " ", "-")
+	if folder != "" && !prompt.IsValidTemplateName(folder) {
+		fmt.Fprintln(os.Stderr, "Invalid folder name (use only letters, numbers, hyphen, underscore).")
+		return
+	}
+	fmt.Fprint(os.Stderr, "Prompt name: ")
+	name := strings.ReplaceAll(readLineStdin(), " ", "-")
+	if name == "" || !prompt.IsValidTemplateName(name) {
+		fmt.Fprintln(os.Stderr, "Invalid prompt name (use only letters, numbers, hyphen, underscore).")
+		return
+	}
+	baseAbs, err := filepath.Abs(appCfg.PromptsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to resolve prompts dir: %v\n", err)
+		return
+	}
+	var targetDir string
+	if folder != "" {
+		targetDir = filepath.Join(appCfg.PromptsDir, folder)
+	} else {
+		targetDir = appCfg.PromptsDir
+	}
+	targetAbs, err := filepath.Abs(targetDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to resolve target dir: %v\n", err)
+		return
+	}
+	rel, err := filepath.Rel(baseAbs, filepath.Join(targetAbs, name+".yaml"))
+	if err != nil || strings.HasPrefix(rel, "..") {
+		fmt.Fprintln(os.Stderr, "Invalid path (would be outside prompts directory).")
+		return
+	}
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create directory: %v\n", err)
+		return
+	}
+	path := filepath.Join(targetDir, name+".yaml")
+	templateContent := result.Template
+	if templateContent == "" {
+		templateContent = prompt.MinimalTemplate(name, result.Prompt)
+	}
+	if err := os.WriteFile(path, []byte(templateContent), 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to save: %v\n", err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Saved to %s\n", path)
+	fmt.Fprintln(os.Stderr, "Prompts are stored only on your computer, not uploaded. If you remove the app, they will be deleted.")
 }
 
 // listDir recursively lists directory contents

@@ -30,6 +30,12 @@ func TestLoad(t *testing.T) {
 	if cfg.DefaultVars == nil {
 		t.Error("DefaultVars nil")
 	}
+	if cfg.PromptsDir == "" {
+		t.Error("PromptsDir empty")
+	}
+	if cfg.PromptsDir != cfg.GlobalTemplateDir {
+		t.Errorf("PromptsDir should default to GlobalTemplateDir; got %q", cfg.PromptsDir)
+	}
 }
 
 func TestInitGlobal(t *testing.T) {
@@ -173,5 +179,67 @@ func TestDefaultEnhanceURL(t *testing.T) {
 	}
 	if len(DefaultEnhanceURL) < 8 || DefaultEnhanceURL[:8] != "https://" {
 		t.Errorf("DefaultEnhanceURL must be https: %q", DefaultEnhanceURL)
+	}
+}
+
+func TestLoad_PromptsDirFromEnv(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("PROMPTCTL_PROMPTS_DIR", "/custom/prompts")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() err = %v", err)
+	}
+	if cfg.PromptsDir != "/custom/prompts" {
+		t.Errorf("PromptsDir = %q, want /custom/prompts", cfg.PromptsDir)
+	}
+}
+
+func TestLoad_PromptsDirFromFile(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	globalDir := filepath.Join(dir, ".promptctl")
+	if err := os.MkdirAll(globalDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	promptsDirPath := filepath.Join(globalDir, "prompts_dir")
+	if err := os.WriteFile(promptsDirPath, []byte("/saved/prompts/dir\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() err = %v", err)
+	}
+	if cfg.PromptsDir != "/saved/prompts/dir" {
+		t.Errorf("PromptsDir = %q, want /saved/prompts/dir", cfg.PromptsDir)
+	}
+}
+
+func TestSavePromptsDir(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	want := filepath.Join(dir, "my-prompts")
+
+	err := SavePromptsDir(want)
+	if err != nil {
+		t.Fatalf("SavePromptsDir() err = %v", err)
+	}
+	path := filepath.Join(dir, ".promptctl", "prompts_dir")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(prompts_dir) err = %v", err)
+	}
+	if got := string(data); got != want+"\n" {
+		t.Errorf("prompts_dir content = %q, want %q", got, want+"\n")
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() after SavePromptsDir err = %v", err)
+	}
+	if cfg.PromptsDir != want {
+		t.Errorf("Load() PromptsDir = %q, want %q", cfg.PromptsDir, want)
 	}
 }

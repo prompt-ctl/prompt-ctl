@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/oleg-koval/promptctl/config"
 )
 
 func TestExecute_Version(t *testing.T) {
@@ -140,5 +142,75 @@ func TestExecute_Vars(t *testing.T) {
 	err := Execute()
 	if err != nil {
 		t.Fatalf("Execute() vars err = %v", err)
+	}
+}
+
+func TestExecute_Memory_NoSubcommand(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "memory"}
+	err := Execute()
+	if err == nil {
+		t.Fatal("Execute() memory with no subcommand should error")
+	}
+	if !strings.Contains(err.Error(), "usage") {
+		t.Errorf("error should contain usage: %v", err)
+	}
+}
+
+func TestExecute_MemoryList_Empty(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	_ = os.MkdirAll(filepath.Join(dir, ".promptctl", "templates"), 0755)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "memory", "list"}
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() memory list err = %v", err)
+	}
+}
+
+func TestExecute_MemoryList_WithPrompts(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	promptsDir := filepath.Join(dir, ".promptctl", "templates")
+	_ = os.MkdirAll(promptsDir, 0755)
+	_ = os.WriteFile(filepath.Join(promptsDir, "saved.yaml"), []byte("name: saved\ndescription: x\nbody: |\n  x"), 0644)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "memory", "list"}
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() memory list err = %v", err)
+	}
+}
+
+func TestExecute_MemorySetDir(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	customDir := filepath.Join(dir, "my-prompts")
+	_ = os.MkdirAll(filepath.Join(dir, ".promptctl"), 0755)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "memory", "set-dir", customDir}
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() memory set-dir err = %v", err)
+	}
+	// Verify persisted: Load config and check PromptsDir
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("config.Load() after set-dir err = %v", err)
+	}
+	abs, _ := filepath.Abs(customDir)
+	if cfg.PromptsDir != abs {
+		t.Errorf("PromptsDir = %q, want %q", cfg.PromptsDir, abs)
 	}
 }
