@@ -232,7 +232,7 @@ func listPrompts() error {
 		return nil
 	}
 
-	fmt.Println("Available templates:\n")
+	fmt.Print("Available templates:\n")
 	for _, t := range templates {
 		scope := "global"
 		if t.IsLocal {
@@ -737,7 +737,7 @@ Options:
 
 	// Show comparison or single estimate
 	if hasFlag("--compare") {
-		fmt.Println("\n  Cost comparison across all models:\n")
+		fmt.Print("\n  Cost comparison across all models:\n")
 		fmt.Println(llm.FormatCostComparison(renderedPrompt, promptType))
 		fmt.Printf("  Prompt length: ~%s tokens\n\n", formatNumSimple(llm.EstimateTokens(renderedPrompt)))
 	} else {
@@ -746,7 +746,7 @@ Options:
 			return err
 		}
 
-		fmt.Println("\n  Cost estimate:\n")
+		fmt.Print("\n  Cost estimate:\n")
 		fmt.Println(llm.FormatCostEstimate(est))
 		fmt.Println()
 	}
@@ -761,7 +761,7 @@ func listModels() error {
 		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-5-20250929", APIKeys: make(map[string]string)}
 	}
 
-	fmt.Println("\n  Supported models:\n")
+	fmt.Print("\n  Supported models:\n")
 	fmt.Println(llm.FormatModelList())
 
 	// Show current default
@@ -798,7 +798,7 @@ func interactiveModelSwitch(cfg *llm.Config) error {
 		}
 	}
 
-	fmt.Println("  Select your default model:\n")
+	fmt.Print("  Select your default model:\n")
 	for i, m := range allModels {
 		marker := "  "
 		if m.model.ID == cfg.DefaultModel {
@@ -893,7 +893,7 @@ func configOnboarding() error {
 	fmt.Println()
 
 	// ── Step 1: Select provider ──────────────────────────────────
-	fmt.Println("  Step 1/4 - Choose your LLM provider\n")
+	fmt.Print("  Step 1/4 - Choose your LLM provider\n")
 
 	providerKeys := llm.ProviderKeys()
 	for i, key := range providerKeys {
@@ -916,7 +916,7 @@ func configOnboarding() error {
 	fmt.Printf("\n  ✓ Provider: %s\n\n", selectedProvider.Name)
 
 	// ── Step 2: Select model ─────────────────────────────────────
-	fmt.Println("  Step 2/4 - Choose your default model\n")
+	fmt.Print("  Step 2/4 - Choose your default model\n")
 
 	for i, model := range selectedProvider.Models {
 		fmt.Printf("    [%d] %-22s  $%.2f/MTok in  $%.2f/MTok out  %sk context\n",
@@ -939,7 +939,7 @@ func configOnboarding() error {
 	fmt.Printf("\n  ✓ Model: %s\n\n", selectedModel.Name)
 
 	// ── Step 3: API key ──────────────────────────────────────────
-	fmt.Println("  Step 3/4 - Connect your API key\n")
+	fmt.Print("  Step 3/4 - Connect your API key\n")
 
 	// Check if key already exists
 	existingKey := ""
@@ -996,7 +996,7 @@ saveConfig:
 
 	// ── Step 4: Confirmation ─────────────────────────────────────
 	fmt.Println()
-	fmt.Println("  Step 4/4 - You're all set!\n")
+	fmt.Print("  Step 4/4 - You're all set!\n")
 	fmt.Println("  ┌────────────────────────────────────────────────────┐")
 	fmt.Printf("  │  Provider:  %-40s│\n", selectedProvider.Name)
 	fmt.Printf("  │  Model:     %-40s│\n", selectedModel.Name)
