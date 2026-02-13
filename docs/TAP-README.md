@@ -1,11 +1,11 @@
 # 🍺 Homebrew Tap
 
-Official Homebrew formulae for **[promptctl](https://github.com/YOUR_USERNAME/promptctl)** - a CLI toolkit that transforms raw ideas into structured, optimized prompts.
+Official Homebrew formulae for **[promptctl](https://github.com/oleg-koval/promptctl)** - a CLI toolkit that transforms raw ideas into structured, optimized prompts.
 
 ## Install
 
 ```bash
-brew tap YOUR_USERNAME/tap
+brew tap oleg-koval/tap
 brew install promptctl
 ```
 
@@ -27,7 +27,7 @@ brew upgrade promptctl
 
 | Formula | Description | Version |
 |---------|-------------|---------|
-| **promptctl** | Prompt engineering toolkit for developers | [![GitHub Release](https://img.shields.io/github/v/release/YOUR_USERNAME/promptctl)](https://github.com/YOUR_USERNAME/promptctl/releases) |
+| **promptctl** | Prompt engineering toolkit for developers | [![GitHub Release](https://img.shields.io/github/v/release/oleg-koval/promptctl)](https://github.com/oleg-koval/promptctl/releases) |
 
 ## What is promptctl?
 
@@ -48,14 +48,14 @@ promptctl review --file=src/auth.ts
 promptctl review --file=main.go | claude
 ```
 
-**[Full docs & source →](https://github.com/YOUR_USERNAME/promptctl)**
+**[Full docs & source →](https://github.com/oleg-koval/promptctl/tree/main/docs)** · [Releases](https://github.com/oleg-koval/promptctl/releases)
 
 ## Troubleshooting
 
 **Formula not found:**
 ```bash
-brew untap YOUR_USERNAME/tap
-brew tap YOUR_USERNAME/tap
+brew untap oleg-koval/tap
+brew tap oleg-koval/tap
 brew install promptctl
 ```
 
