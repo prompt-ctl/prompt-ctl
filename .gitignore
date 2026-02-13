@@ -25,4 +25,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Secrets (worker, worker-alerts)
+.env
+.env.local
+.dev.vars
+worker/.dev.vars
+worker-alerts/.dev.vars
+
 /scripts

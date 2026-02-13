@@ -1,6 +1,8 @@
 package prompt
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -110,6 +112,54 @@ func TestEnhance_ToneCritical(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(result.Prompt), "critical") && !strings.Contains(strings.ToLower(result.Prompt), "honest") {
 		t.Log("prompt may not explicitly say critical; check constraints:", result.Prompt[:min(200, len(result.Prompt))])
+	}
+}
+
+func TestEnhanceWithFallback_UseRuleWhenModeNotLLM(t *testing.T) {
+	cfg := EnhanceConfig{Intent: "review my code", OutputFormat: "xml"}
+	result, err := EnhanceWithFallback(cfg, "https://enhance.example.com", "rule")
+	if err != nil {
+		t.Fatalf("EnhanceWithFallback err = %v", err)
+	}
+	if result == nil || result.Prompt == "" {
+		t.Fatal("expected non-empty prompt")
+	}
+	if !strings.Contains(result.Prompt, "<context>") {
+		t.Error("expected rule-based XML output")
+	}
+}
+
+func TestEnhanceWithFallback_UseRuleWhenURLEmpty(t *testing.T) {
+	cfg := EnhanceConfig{Intent: "debug the bug", OutputFormat: "xml"}
+	result, err := EnhanceWithFallback(cfg, "", "llm")
+	if err != nil {
+		t.Fatalf("EnhanceWithFallback err = %v", err)
+	}
+	if result == nil || result.Prompt == "" {
+		t.Fatal("expected non-empty prompt")
+	}
+	if !strings.Contains(result.Prompt, "<context>") {
+		t.Error("expected rule-based output when URL empty")
+	}
+}
+
+func TestEnhanceWithFallback_FallbackToRuleOnAPIFailure(t *testing.T) {
+	// Server returns 500 so API fails; should fall back to rule-based
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	cfg := EnhanceConfig{Intent: "analyze my startup idea", OutputFormat: "xml"}
+	result, err := EnhanceWithFallback(cfg, server.URL, "llm")
+	if err != nil {
+		t.Fatalf("EnhanceWithFallback should fall back, err = %v", err)
+	}
+	if result == nil || result.Prompt == "" {
+		t.Fatal("expected fallback to rule-based prompt")
+	}
+	if !strings.Contains(result.Prompt, "<context>") {
+		t.Error("expected rule-based XML after fallback")
 	}
 }
 

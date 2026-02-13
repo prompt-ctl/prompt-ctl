@@ -115,6 +115,19 @@ promptctl review --file=src/auth.ts | openai chat
 promptctl cp review --file=src/auth.ts
 ```
 
+## Enhance mode
+
+By default, `promptctl create "your intent"` uses the **hosted LLM enhancer** (no env or keys needed). To use the offline rule-based enhancer instead:
+
+```bash
+export PROMPTCTL_ENHANCE=rule
+promptctl create "review my auth code"
+```
+
+To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.dev` (see [worker/](worker/)). The default hosted Worker applies request limits (e.g. 4000 chars intent, 32 KiB body) and optional analytics.
+
+Do not commit API keys or webhook URLs; use environment variables or Cloudflare secrets.
+
 ## Project-Level Templates
 
 Create project-specific templates that override or extend global ones:

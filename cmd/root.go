@@ -12,7 +12,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.3.3"
+const version = "0.3.4"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -126,13 +126,18 @@ func createPrompt() error {
 	}
 
 	cfg := prompt.EnhanceConfig{
-		Intent:       intent,
-		OutputFormat: format,
-		SaveAs:       saveName,
-		Persona:      persona,
+		Intent:        intent,
+		OutputFormat:  format,
+		SaveAs:        saveName,
+		Persona:       persona,
+		ClientVersion: version,
 	}
 
-	result, err := prompt.Enhance(cfg)
+	appCfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	result, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 	if err != nil {
 		return fmt.Errorf("failed to enhance prompt: %w", err)
 	}
@@ -141,11 +146,6 @@ func createPrompt() error {
 
 	// If --save was specified, write as a reusable template
 	if saveName != "" && result.Template != "" {
-		appCfg, err := config.Load()
-		if err != nil {
-			return err
-		}
-
 		dir := appCfg.GlobalTemplateDir
 		if hasFlag("--local") {
 			dir = appCfg.LocalTemplateDir
@@ -568,11 +568,16 @@ Examples:
 	// Check if using --create mode or template mode
 	if createIntent, ok := vars["create"]; ok {
 		// Create mode: enhance the intent first
-		enhanceCfg := prompt.EnhanceConfig{
-			Intent:       createIntent,
-			OutputFormat: "xml",
+		appCfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("failed to load config: %w", err)
 		}
-		result, err := prompt.Enhance(enhanceCfg)
+		enhanceCfg := prompt.EnhanceConfig{
+			Intent:        createIntent,
+			OutputFormat:  "xml",
+			ClientVersion: version,
+		}
+		result, err := prompt.EnhanceWithFallback(enhanceCfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 		if err != nil {
 			return fmt.Errorf("failed to enhance prompt: %w", err)
 		}
@@ -661,13 +666,19 @@ Options:
 	var renderedPrompt string
 	var promptType string
 
+	appCfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
 	// Determine the prompt to estimate
 	if createIntent, ok := vars["create"]; ok {
 		enhanceCfg := prompt.EnhanceConfig{
-			Intent:       createIntent,
-			OutputFormat: "xml",
+			Intent:        createIntent,
+			OutputFormat:  "xml",
+			ClientVersion: version,
 		}
-		result, err := prompt.Enhance(enhanceCfg)
+		result, err := prompt.EnhanceWithFallback(enhanceCfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 		if err != nil {
 			return err
 		}
@@ -677,10 +688,11 @@ Options:
 		// --compare is the second arg, intent is the third
 		if len(os.Args) >= 4 && !strings.HasPrefix(os.Args[3], "--") {
 			enhanceCfg := prompt.EnhanceConfig{
-				Intent:       os.Args[3],
-				OutputFormat: "xml",
+				Intent:        os.Args[3],
+				OutputFormat:  "xml",
+				ClientVersion: version,
 			}
-			result, err := prompt.Enhance(enhanceCfg)
+			result, err := prompt.EnhanceWithFallback(enhanceCfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 			if err != nil {
 				return err
 			}
@@ -688,11 +700,7 @@ Options:
 		} else if len(os.Args) >= 3 && !strings.HasPrefix(os.Args[2], "--") {
 			// cost <template> --compare
 			name := os.Args[2]
-			cfg, err := config.Load()
-			if err != nil {
-				return err
-			}
-			tmpl, err := prompt.LoadTemplate(name, cfg)
+			tmpl, err := prompt.LoadTemplate(name, appCfg)
 			if err != nil {
 				return fmt.Errorf("template '%s' not found", name)
 			}
@@ -701,12 +709,7 @@ Options:
 		promptType = "general"
 	} else {
 		name := os.Args[2]
-		cfg, err := config.Load()
-		if err != nil {
-			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		tmpl, err := prompt.LoadTemplate(name, cfg)
+		tmpl, err := prompt.LoadTemplate(name, appCfg)
 		if err != nil {
 			// Maybe it's raw text
 			renderedPrompt = name

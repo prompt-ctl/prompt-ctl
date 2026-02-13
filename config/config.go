@@ -5,12 +5,19 @@ import (
 	"path/filepath"
 )
 
+// DefaultEnhanceURL is the hosted promptctl-enhance Worker used when PROMPTCTL_ENHANCE=llm and PROMPTCTL_ENHANCE_URL is unset.
+const DefaultEnhanceURL = "https://promptctl-enhance.kvl-olg.workers.dev"
+
 // Config holds all promptctl configuration
 type Config struct {
 	GlobalTemplateDir string
 	LocalTemplateDir  string
 	GlobalConfigFile  string
 	DefaultVars       map[string]string
+	// EnhanceURL is the optional LLM enhance API endpoint (e.g. Cloudflare Worker). Set with PROMPTCTL_ENHANCE_URL.
+	EnhanceURL string
+	// EnhanceMode is "llm" (default, uses hosted Worker) or "rule" (offline). Set with PROMPTCTL_ENHANCE.
+	EnhanceMode string
 }
 
 // Load discovers and merges config from global and local sources.
@@ -30,6 +37,14 @@ func Load() (*Config, error) {
 		LocalTemplateDir:  filepath.Join(localDir, "templates"),
 		GlobalConfigFile:  filepath.Join(globalDir, "config.yaml"),
 		DefaultVars:       make(map[string]string),
+		EnhanceURL:        os.Getenv("PROMPTCTL_ENHANCE_URL"),
+		EnhanceMode:       os.Getenv("PROMPTCTL_ENHANCE"),
+	}
+	if cfg.EnhanceMode == "" {
+		cfg.EnhanceMode = "llm"
+	}
+	if cfg.EnhanceMode == "llm" && cfg.EnhanceURL == "" {
+		cfg.EnhanceURL = DefaultEnhanceURL
 	}
 
 	return cfg, nil

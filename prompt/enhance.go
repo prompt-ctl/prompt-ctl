@@ -17,12 +17,30 @@ type EnhanceConfig struct {
 	Persona string
 	// NoConstraints skips adding constraint section
 	NoConstraints bool
+	// ClientVersion optional; when set, sent as User-Agent promptctl/<version> for analytics
+	ClientVersion string
 }
 
 // EnhanceResult holds the enhanced prompt and metadata
 type EnhanceResult struct {
 	Prompt   string
 	Template string // YAML template version if SaveAs was set
+}
+
+// EnhanceWithFallback uses the LLM enhance API when enhanceMode is "llm" and enhanceURL is set;
+// otherwise (or on API failure) falls back to rule-based Enhance.
+func EnhanceWithFallback(cfg EnhanceConfig, enhanceURL, enhanceMode string) (*EnhanceResult, error) {
+	if strings.TrimSpace(cfg.Intent) == "" {
+		return nil, fmt.Errorf("intent cannot be empty")
+	}
+	if enhanceMode == "llm" && enhanceURL != "" {
+		result, err := EnhanceViaAPI(enhanceURL, cfg)
+		if err == nil {
+			return result, nil
+		}
+		// Fall through to rule-based on any error
+	}
+	return Enhance(cfg)
 }
 
 // Enhance transforms raw intent into a well-structured prompt

@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +39,39 @@ func TestExecute_Create(t *testing.T) {
 	err := Execute()
 	if err != nil {
 		t.Fatalf("Execute() err = %v", err)
+	}
+}
+
+func TestExecute_CreateRule_StdoutContainsContext(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("PROMPTCTL_ENHANCE", "rule")
+	defer func() {
+		os.Unsetenv("HOME")
+		os.Unsetenv("PROMPTCTL_ENHANCE")
+	}()
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "create", "review my code"}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout; w.Close() }()
+
+	err = Execute()
+	if err != nil {
+		t.Fatalf("Execute() err = %v", err)
+	}
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	out := buf.String()
+	if !strings.Contains(out, "<context>") {
+		t.Errorf("stdout should contain <context> when using rule enhance; got:\n%s", out)
 	}
 }
 
