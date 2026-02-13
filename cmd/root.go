@@ -14,7 +14,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.4.2"
+const version = "0.4.6"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -106,7 +106,7 @@ COST SAVINGS:
 // createPrompt transforms raw intent into a structured prompt
 func createPrompt() error {
 	if len(os.Args) < 3 {
-		return fmt.Errorf("usage: promptctl create \"your raw intent here\" [--save=name] [--format=xml|markdown] [--persona=\"...\"]")
+		return fmt.Errorf("usage: promptctl create \"your raw intent here\" [--save=name] [--format=xml|markdown] [--persona=\"...\"] [--score] [--no-rate]")
 	}
 
 	intent := os.Args[2]
@@ -144,7 +144,26 @@ func createPrompt() error {
 		return fmt.Errorf("failed to enhance prompt: %w", err)
 	}
 
+	// Score quality when requested or when using LLM (to tune response)
+	showScore := hasFlag("--score") || (appCfg.EnhanceMode == "llm" && appCfg.EnhanceURL != "")
+	if showScore {
+		sc := prompt.ScoreEnhanceResult(cfg.Intent, result.Prompt)
+		fmt.Fprintf(os.Stderr, "Quality score: %d/100", sc.Score)
+		if len(sc.Hints) > 0 {
+			fmt.Fprintf(os.Stderr, " — %s", sc.Hints[0])
+			for _, h := range sc.Hints[1:] {
+				fmt.Fprintf(os.Stderr, "; %s", h)
+			}
+		}
+		fmt.Fprintln(os.Stderr)
+	}
+
 	fmt.Println(result.Prompt)
+
+	// Ask user to rate output when running interactively (stdin is a TTY)
+	if !hasFlag("--no-rate") && stdinIsTerminal() {
+		askUserRating()
+	}
 
 	// If --save was specified, write as a reusable template
 	if saveName != "" && result.Template != "" {
@@ -509,6 +528,32 @@ func hasFlag(flag string) bool {
 		}
 	}
 	return false
+}
+
+// stdinIsTerminal returns true if stdin is a character device (e.g. terminal).
+func stdinIsTerminal() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
+// askUserRating prompts for a 1-5 rating on stderr and thanks the user.
+func askUserRating() {
+	fmt.Fprint(os.Stderr, "\nRate this output (1-5, Enter to skip): ")
+	var input string
+	fmt.Scanln(&input)
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return
+	}
+	var n int
+	if _, err := fmt.Sscanf(input, "%d", &n); err != nil || n < 1 || n > 5 {
+		fmt.Fprintln(os.Stderr, "Skipped (use 1-5).")
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Thanks — %d/5.\n", n)
 }
 
 // listDir recursively lists directory contents

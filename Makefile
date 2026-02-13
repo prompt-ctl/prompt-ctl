@@ -2,8 +2,9 @@
 
 .PHONY: release build test
 
-# Interactive release: commit, push, tag (version from arg, VERSION env, or cmd/root.go)
-# Usage: make release [VERSION=0.4.0]   or: make release (uses version in code)
+# Release: bump version in cmd/root.go if VERSION given, commit, push main, tag, push tag.
+# Triggers workflow -> promptctl-releases -> Homebrew cask.
+# Usage: make release   (use version from cmd/root.go)   or: make release VERSION=0.4.7
 release:
 	@./scripts/release.sh $(VERSION)
 

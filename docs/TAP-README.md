@@ -9,6 +9,8 @@ brew tap oleg-koval/tap
 brew install promptctl
 ```
 
+Binaries are served from the public [promptctl-releases](https://github.com/oleg-koval/promptctl-releases) repo, so no token is required.
+
 ## Verify
 
 ```bash
