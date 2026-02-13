@@ -1,0 +1,60 @@
+# Changelog
+
+All notable changes to promptctl are documented here.
+
+## [0.6.0] - (current)
+
+- Implement memory management features in promptctl
+
+- Added commands for managing saved prompts: `memory list`, `memory open`, and `memory set-dir`.
+- Introduced functionality to list prompts in a specified directory, open the prompts directory in the file manager, and set a custom directory for saved prompts.
+- Updated configuration to support a dedicated prompts directory, with persistence through environment variables and configuration files.
+- Enhanced user interaction by prompting to save enhanced prompts to memory.
+- Added tests for new memory management features and updated existing tests to ensure proper functionality.
+
+## [0.5.0]
+
+- Current stable. See GitHub Releases for details.
+
+## [0.4.6]
+
+- Binaries published to public [promptctl-releases](https://github.com/oleg-koval/promptctl-releases); Homebrew cask points there (install with no token).
+- `make release VERSION=x.y.z` bumps version in `cmd/root.go`, commits, tags, and triggers the release workflow.
+- Docs page on site; install/upgrade use `brew install --cask` / `brew upgrade --cask`.
+
+## [0.4.5] – [0.4.3]
+
+- Release pipeline and Homebrew cask updates.
+
+## [0.4.2]
+
+- Stable release. Includes all improvements from 0.4.0 and 0.4.1.
+
+## [0.4.1]
+
+- Stability and packaging updates.
+
+## [0.4.0]
+
+### Security & usability
+
+- Path safety checks to prevent path traversal in command execution.
+- Template name validation – safe naming conventions enforced.
+- README updates: HTTPS requirement for custom Worker URLs, security guidelines for API keys and webhooks.
+- New tests for path safety and error handling.
+
+## [0.3.5]
+
+- Documentation and docs site updates.
+
+## [0.3.4]
+
+- **Tests:** Expanded test coverage (config, prompt enhance, enhanceclient, root command).
+- **Worker:** Cloudflare Worker for prompt enhancement with rate limits and analytics.
+- Deploy script and README improvements.
+- Config package with tests.
+
+## [0.3.3]
+
+- Multi-model cost comparison (`promptctl cost --compare`).
+- Structured prompt generation and template runs. Pipe to Claude CLI, OpenAI CLI, or send directly with cost tracking.
