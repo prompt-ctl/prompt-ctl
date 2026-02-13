@@ -27,7 +27,7 @@ builds:
     # Inject version info at build time
     ldflags:
       - -s -w
-      - -X github.com/oleg/promptctl/cmd.version={{.Version}}
+      - -X github.com/oleg-koval/promptctl/cmd.version={{.Version}}
 
 archives:
   - id: promptctl
