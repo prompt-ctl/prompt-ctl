@@ -85,14 +85,16 @@ var Providers = map[string]Provider{
 		},
 	},
 	"openai": {
+		// GPT-4o, GPT-4.1, GPT-4.1 mini, o4-mini retired from ChatGPT Feb 2026 (API unchanged). Prefer GPT-5.1 / GPT-5.2 for new use.
 		Name:    "OpenAI",
 		BaseURL: "https://api.openai.com/v1/chat/completions",
 		EnvKey:  "OPENAI_API_KEY",
 		KeyURL:  "https://platform.openai.com/api-keys",
 		Order:   2,
 		Models: []Model{
-			{ID: "gpt-5", Name: "GPT-5", InputPerMTok: 1.25, OutputPerMTok: 10.0, ContextWindow: 128000, Provider: "openai"},
+			{ID: "gpt-5.1", Name: "GPT-5.1", InputPerMTok: 1.5, OutputPerMTok: 12.0, ContextWindow: 128000, Provider: "openai"},
 			{ID: "gpt-5.2", Name: "GPT-5.2", InputPerMTok: 1.75, OutputPerMTok: 14.0, ContextWindow: 128000, Provider: "openai"},
+			{ID: "gpt-5", Name: "GPT-5", InputPerMTok: 1.25, OutputPerMTok: 10.0, ContextWindow: 128000, Provider: "openai"},
 		},
 	},
 	"groq": {
