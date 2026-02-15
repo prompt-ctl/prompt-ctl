@@ -2,15 +2,24 @@
 
 All notable changes to promptctl are documented here.
 
-## [0.6.0] - (current)
+## [Unreleased]
 
-- Implement memory management features in promptctl
+- Try auth: error redirect no double-slash; fragment `reason` (missing, state, exchange, email, config) for debugging.
+- GitHub OAuth troubleshooting in worker-try docs (callback URL, secrets).
 
+## [0.7.0]
+
+- worker-try: Try promptctl API (OAuth + JWT, 5 tries per account); GitHub and Google sign-in.
+- deploy-workers.sh, docs/CLI-DEPLOY.md; .gitignore node_modules and worker-try/.wrangler.
+
+## [0.6.0]
+
+- Implement memory management features in promptctl.
 - Added commands for managing saved prompts: `memory list`, `memory open`, and `memory set-dir`.
 - Introduced functionality to list prompts in a specified directory, open the prompts directory in the file manager, and set a custom directory for saved prompts.
 - Updated configuration to support a dedicated prompts directory, with persistence through environment variables and configuration files.
 - Enhanced user interaction by prompting to save enhanced prompts to memory.
-- Added tests for new memory management features and updated existing tests to ensure proper functionality.
+- Added tests for new memory management features and updated existing tests.
 
 ## [0.5.0]
 
