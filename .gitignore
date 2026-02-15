@@ -10,6 +10,11 @@ promptctl.exe
 dist/
 pkg/
 
+# Node (workers)
+node_modules/
+worker/node_modules/
+worker-try/node_modules/
+
 # Test
 *.test
 *.out
@@ -31,5 +36,10 @@ Thumbs.db
 .dev.vars
 worker/.dev.vars
 worker-alerts/.dev.vars
+worker-try/.dev.vars
+worker-try/.wrangler/
 
 /scripts
+
+# Worktrees (isolated branches)
+.worktrees
