@@ -76,15 +76,20 @@ jobs:
   build-mac-app:
     runs-on: macos-14
     needs: release
-    if: hashFiles('scripts/build-mac-app.sh') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check for Mac app script
+        id: check
+        run: echo "exists=$([ -f scripts/build-mac-app.sh ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+
       - name: Build Mac app and create DMG
+        if: steps.check.outputs.exists == 'true'
         run: ./scripts/build-mac-app.sh
 
       - name: Upload DMG to promptctl-releases
+        if: steps.check.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_GITHUB_TOKEN }}
         run: |
