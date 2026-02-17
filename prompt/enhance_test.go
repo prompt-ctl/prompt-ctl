@@ -66,8 +66,8 @@ func TestEnhance_OutputFormatDefault(t *testing.T) {
 
 func TestEnhance_SaveAsGeneratesTemplate(t *testing.T) {
 	result, err := Enhance(EnhanceConfig{
-		Intent:   "plan a migration",
-		SaveAs:   "migration",
+		Intent: "plan a migration",
+		SaveAs: "migration",
 	})
 	if err != nil {
 		t.Fatal(err)

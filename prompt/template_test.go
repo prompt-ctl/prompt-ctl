@@ -56,7 +56,7 @@ func TestTemplate_Render_DefaultApplied(t *testing.T) {
 
 func TestTemplate_Render_Placeholders(t *testing.T) {
 	tmpl := &Template{
-		Body: "File {{.file_name}} ext {{.file_ext}}",
+		Body:      "File {{.file_name}} ext {{.file_ext}}",
 		Variables: []Variable{},
 	}
 	out, err := tmpl.Render(map[string]string{"file_name": "main.go", "file_ext": "go"})
@@ -70,7 +70,7 @@ func TestTemplate_Render_Placeholders(t *testing.T) {
 
 func TestTemplate_Render_IfEnd(t *testing.T) {
 	tmpl := &Template{
-		Body: "A {{if .opt}}B {{.opt}}{{end}} C",
+		Body:      "A {{if .opt}}B {{.opt}}{{end}} C",
 		Variables: []Variable{{Name: "opt", Default: ""}},
 	}
 	out1, _ := tmpl.Render(map[string]string{"opt": "yes"})

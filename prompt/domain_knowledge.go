@@ -4,10 +4,10 @@ import "strings"
 
 // DomainKnowledge represents expertise knowledge for a specific domain
 type DomainKnowledge struct {
-	ExpertRole      string
-	KeyConcerns     []string
-	OutputSections  []string
-	Constraints     []string
+	ExpertRole     string
+	KeyConcerns    []string
+	OutputSections []string
+	Constraints    []string
 }
 
 // domainKnowledgeMap stores expert knowledge for each domain

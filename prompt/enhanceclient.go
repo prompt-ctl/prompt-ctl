@@ -41,16 +41,16 @@ func EnhanceViaAPIWithClient(baseURL string, cfg EnhanceConfig, client *http.Cli
 	}
 
 	body := struct {
-		Intent   string `json:"intent"`
-		Format   string `json:"format"`
-		Persona  string `json:"persona,omitempty"`
-		SaveAs   string `json:"save_as,omitempty"`
-		NoConstraints bool `json:"no_constraints,omitempty"`
+		Intent        string `json:"intent"`
+		Format        string `json:"format"`
+		Persona       string `json:"persona,omitempty"`
+		SaveAs        string `json:"save_as,omitempty"`
+		NoConstraints bool   `json:"no_constraints,omitempty"`
 	}{
-		Intent:   cfg.Intent,
-		Format:   format,
-		Persona:  cfg.Persona,
-		SaveAs:   cfg.SaveAs,
+		Intent:        cfg.Intent,
+		Format:        format,
+		Persona:       cfg.Persona,
+		SaveAs:        cfg.SaveAs,
 		NoConstraints: cfg.NoConstraints,
 	}
 	jsonBody, err := json.Marshal(body)

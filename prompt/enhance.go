@@ -371,17 +371,17 @@ func detectOutputHints(lower string) []string {
 	var hints []string
 
 	formatSignals := map[string]string{
-		"step by step":    "step_by_step",
-		"table":           "table",
-		"compare":         "comparison",
-		"pros and cons":   "pros_cons",
-		"list":            "list",
-		"summary":         "summary",
-		"detailed":        "detailed",
-		"brief":           "brief",
-		"actionable":      "actionable",
-		"framework":       "framework",
-		"swot":            "swot",
+		"step by step":  "step_by_step",
+		"table":         "table",
+		"compare":       "comparison",
+		"pros and cons": "pros_cons",
+		"list":          "list",
+		"summary":       "summary",
+		"detailed":      "detailed",
+		"brief":         "brief",
+		"actionable":    "actionable",
+		"framework":     "framework",
+		"swot":          "swot",
 	}
 
 	for signal, hint := range formatSignals {
@@ -427,7 +427,7 @@ func (b *xmlPromptBuilder) Build(a *intentAnalysis, cfg EnhanceConfig) string {
 	sb.WriteString(fmt.Sprintf("The user wants to: %s\n", a.RawIntent))
 	sb.WriteString(fmt.Sprintf("Domain: %s\n", a.Domain))
 	sb.WriteString(fmt.Sprintf("Task: %s\n", a.TaskType))
-	
+
 	if len(a.ImpliedNeeds) > 0 {
 		sb.WriteString("\nKey concerns to address:\n")
 		for _, concern := range a.ImpliedNeeds {
@@ -439,7 +439,7 @@ func (b *xmlPromptBuilder) Build(a *intentAnalysis, cfg EnhanceConfig) string {
 	// Instructions section with domain-specific output sections
 	sb.WriteString("<instructions>\n")
 	sb.WriteString("Provide a detailed, implementation-ready response covering:\n\n")
-	
+
 	if a.DomainKnowledge != nil && len(a.DomainKnowledge.OutputSections) > 0 {
 		for _, section := range a.DomainKnowledge.OutputSections {
 			sb.WriteString(fmt.Sprintf("### %s\n", section))
@@ -508,7 +508,7 @@ func (b *markdownPromptBuilder) Build(a *intentAnalysis, cfg EnhanceConfig) stri
 	sb.WriteString(fmt.Sprintf("The user wants to: %s\n\n", a.RawIntent))
 	sb.WriteString(fmt.Sprintf("Domain: %s\n\n", a.Domain))
 	sb.WriteString(fmt.Sprintf("Task: %s\n", a.TaskType))
-	
+
 	if len(a.ImpliedNeeds) > 0 {
 		sb.WriteString("\nKey concerns to address:\n")
 		for _, concern := range a.ImpliedNeeds {
