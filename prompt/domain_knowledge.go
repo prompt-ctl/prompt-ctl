@@ -337,21 +337,44 @@ var domainKnowledgeMap = map[string]*DomainKnowledge{
 }
 
 // detectDomain analyzes intent and returns the best matching domain
+// Ordered by specificity - more specific domains first to avoid false positives
 func detectDomain(lower string) string {
 	domainPatterns := []struct {
 		keywords []string
 		domain   string
 	}{
-		{[]string{"game", "player", "manager", "rpg", "multiplayer", "score", "level", "match engine", "football", "soccer", "sports game"}, "gaming"},
-		{[]string{"payment", "trading", "banking", "transaction", "ledger", "invoice", "fintech", "money", "currency", "financial"}, "fintech"},
-		{[]string{"shop", "cart", "product", "marketplace", "listing", "checkout", "ecommerce", "e-commerce", "store", "inventory"}, "ecommerce"},
-		{[]string{"dashboard", "analytics", "saas", "subscription", "tenant", "admin panel", "b2b", "multi-tenant"}, "saas"},
-		{[]string{"ios app", "android app", "mobile app", "push notification", "offline", "smartphone"}, "mobile"},
-		{[]string{"train", "training", "ml model", "neural", "dataset", "predict", "machine learning", "deep learning", "classification"}, "ai_ml"},
-		{[]string{"deploy", "ci/cd", "pipeline", "kubernetes", "docker", "monitoring", "devops", "infrastructure", "terraform"}, "devops"},
-		{[]string{"course", "learning", "quiz", "student", "curriculum", "lms", "education", "teach", "lesson"}, "education"},
-		{[]string{"patient", "medical", "health", "diagnosis", "hipaa", "clinical", "healthcare", "hospital", "doctor"}, "healthcare"},
-		{[]string{"feed", "profile", "follow", "post", "community", "messaging", "social network", "friend", "share"}, "social"},
+		// Healthcare - check first due to specific medical terminology
+		{[]string{"patient", "medical", "health record", "diagnosis", "hipaa", "clinical", "healthcare", "hospital", "doctor", "clinic", "prescription", "telemedicine", "telehealth"}, "healthcare"},
+		
+		// Fintech - specific financial terms
+		{[]string{"payment", "trading", "banking", "transaction", "ledger", "invoice", "fintech", "wallet", "currency", "financial", "cryptocurrency", "blockchain", "exchange"}, "fintech"},
+		
+		// Gaming - specific game terms
+		{[]string{"game", "player", "rpg", "multiplayer", "score", "level", "match", "tournament", "leaderboard", "achievement", "football", "soccer", "manager"}, "gaming"},
+		
+		// E-commerce - specific shopping terms (but not generic "listing")
+		{[]string{"shop", "cart", "product catalog", "marketplace", "checkout", "ecommerce", "e-commerce", "inventory", "shopify", "woocommerce", "stripe payment"}, "ecommerce"},
+		
+		// Mobile - iOS, Android, mobile-specific
+		{[]string{"ios", "android", "mobile", "smartphone", "tablet", "app store", "play store", "react native", "flutter", "swift", "kotlin"}, "mobile"},
+		
+		// AI/ML - machine learning specific (check before general "train")
+		{[]string{"ml model", "neural", "dataset", "predict", "machine learning", "deep learning", "classification", "regression", "tensorflow", "pytorch", "recommendation system", "sentiment analysis"}, "ai_ml"},
+		
+		// DevOps - infrastructure and deployment (before general "cluster")
+		{[]string{"ci/cd", "pipeline", "kubernetes", "docker", "devops", "infrastructure", "terraform", "ansible", "jenkins", "helm", "deploy", "deployment"}, "devops"},
+		
+		// SaaS - multi-tenant, subscription-based (check before general analytics)
+		{[]string{"saas", "subscription", "tenant", "multi-tenant", "b2b", "b2c", "billing", "usage tracking", "api key", "customer churn", "retention", "mrr", "arr"}, "saas"},
+		
+		// Education - learning platforms
+		{[]string{"course", "quiz", "student", "curriculum", "lms", "education", "teach", "lesson", "assignment", "grade", "learning platform"}, "education"},
+		
+		// Social - social networking features (avoid conflicts with "post" in other contexts)
+		{[]string{"feed", "profile", "follower", "following", "messaging", "social network", "friend", "like", "comment", "share"}, "social"},
+		
+		// Analytics/Dashboard (maps to SaaS for business intelligence)
+		{[]string{"dashboard", "analytics", "metrics", "chart", "visualization", "reporting", "kpi", "user behavior"}, "saas"},
 	}
 
 	for _, p := range domainPatterns {
