@@ -49,6 +49,14 @@ jobs:
             --title "$TAG" \
             --notes "See [promptctl](https://github.com/oleg-koval/promptctl) (private)." \
             "${ARTIFACTS[@]}"
+      - name: Remove source code assets from release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          for name in "Source code (zip)" "Source code (tar.gz)"; do
+            gh release delete-asset "$TAG" "$name" --repo oleg-koval/promptctl-releases -y 2>/dev/null || true
+          done
 
       # Push generated cask to tap (cask URL points at promptctl-releases)
       - name: Push cask to tap
