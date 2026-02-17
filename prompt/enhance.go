@@ -86,6 +86,8 @@ func Enhance(cfg EnhanceConfig) (*EnhanceResult, error) {
 
 // intentAnalysis holds the decomposed understanding of what the user wants
 type intentAnalysis struct {
+	// Domain categorizes the subject area (gaming, fintech, saas, etc.)
+	Domain string
 	// TaskType categorizes the request
 	TaskType string
 	// Subject is the core topic/object being discussed
@@ -100,6 +102,8 @@ type intentAnalysis struct {
 	OutputHints []string
 	// RawIntent preserves the original text
 	RawIntent string
+	// DomainKnowledge holds expert knowledge for the detected domain
+	DomainKnowledge *DomainKnowledge
 }
 
 // analyzeIntent performs rule-based decomposition of the user's raw intent
@@ -110,6 +114,10 @@ func analyzeIntent(intent string) *intentAnalysis {
 		RawIntent: intent,
 	}
 
+	// Detect domain first (gaming, fintech, etc.)
+	analysis.Domain = detectDomain(lower)
+	analysis.DomainKnowledge = domainKnowledgeMap[analysis.Domain]
+
 	// Detect task type from keywords
 	analysis.TaskType = detectTaskType(lower)
 
@@ -119,8 +127,8 @@ func analyzeIntent(intent string) *intentAnalysis {
 	// Extract explicit actions from the intent
 	analysis.Actions = extractActions(intent)
 
-	// Infer implied needs based on task type
-	analysis.ImpliedNeeds = inferNeeds(analysis.TaskType, lower)
+	// Infer implied needs based on domain knowledge and task type
+	analysis.ImpliedNeeds = inferNeeds(analysis.TaskType, lower, analysis.DomainKnowledge)
 
 	// Detect tone signals
 	analysis.Tone = detectTone(lower)
@@ -139,15 +147,19 @@ func detectTaskType(lower string) string {
 	}{
 		{[]string{"business idea", "startup", "market", "validate", "viability", "product-market"}, "business_analysis"},
 		{[]string{"review", "code review", "pull request", "pr review"}, "code_review"},
-		{[]string{"debug", "fix", "error", "bug", "broken", "crash"}, "debugging"},
+		{[]string{"debug", "fix", "error", "bug", "broken", "crash", "not working"}, "debug"},
 		{[]string{"architect", "design", "system design", "infrastructure"}, "architecture"},
 		{[]string{"write", "draft", "compose", "blog", "article", "post"}, "writing"},
 		{[]string{"explain", "teach", "how does", "what is", "understand"}, "explanation"},
-		{[]string{"analyze", "analysis", "evaluate", "assess", "compare"}, "analysis"},
-		{[]string{"plan", "roadmap", "strategy", "timeline", "milestones"}, "planning"},
-		{[]string{"refactor", "improve", "optimize", "clean up"}, "refactoring"},
+		{[]string{"analyze", "analysis", "evaluate", "assess"}, "analyze"},
+		{[]string{"plan", "roadmap", "strategy", "timeline", "milestones"}, "plan"},
+		{[]string{"refactor", "improve", "clean up"}, "refactoring"},
 		{[]string{"test", "testing", "test cases", "unit test"}, "testing"},
-		{[]string{"convert", "transform", "migrate", "translate"}, "transformation"},
+		{[]string{"convert", "transform", "translate", "port"}, "transformation"},
+		{[]string{"migrate", "move", "upgrade"}, "migrate"},
+		{[]string{"optimize", "speed up", "reduce", "scale"}, "optimize"},
+		{[]string{"compare", "versus", "vs", "which"}, "compare"},
+		{[]string{"build", "create", "make", "develop", "implement"}, "build"},
 	}
 
 	for _, p := range patterns {
@@ -156,6 +168,11 @@ func detectTaskType(lower string) string {
 				return p.taskType
 			}
 		}
+	}
+
+	// Default to "build" if it's a concrete thing being described
+	if hasConcreteNoun(lower) {
+		return "build"
 	}
 
 	return "general"
@@ -200,6 +217,21 @@ func findClauseBoundary(text string) int {
 	}
 
 	return minIdx
+}
+
+// hasConcreteNoun checks if the text describes a concrete thing to build
+func hasConcreteNoun(lower string) bool {
+	concreteIndicators := []string{
+		"app", "application", "system", "platform", "service",
+		"tool", "website", "api", "dashboard", "manager",
+		"bot", "agent", "portal", "interface", "client",
+	}
+	for _, ind := range concreteIndicators {
+		if strings.Contains(lower, ind) {
+			return true
+		}
+	}
+	return false
 }
 
 // extractActions pulls out verb phrases that indicate what the user wants done
@@ -248,10 +280,17 @@ func splitOnActionBoundaries(text string) []string {
 	return parts
 }
 
-// inferNeeds adds implied requirements based on task type
-func inferNeeds(taskType, lower string) []string {
+// inferNeeds adds implied requirements based on task type and domain
+func inferNeeds(taskType, lower string, dk *DomainKnowledge) []string {
 	needs := make([]string, 0)
 
+	// Use domain-specific key concerns if available
+	if dk != nil && len(dk.KeyConcerns) > 0 {
+		needs = append(needs, dk.KeyConcerns...)
+		return needs
+	}
+
+	// Fallback to task-based needs when no domain knowledge
 	switch taskType {
 	case "business_analysis":
 		needs = append(needs,
@@ -273,7 +312,7 @@ func inferNeeds(taskType, lower string) []string {
 			"Assess performance implications",
 			"Evaluate error handling completeness",
 		)
-	case "debugging":
+	case "debugging", "debug":
 		needs = append(needs,
 			"Identify root cause, not just symptoms",
 			"Suggest how to prevent recurrence",
@@ -284,13 +323,13 @@ func inferNeeds(taskType, lower string) []string {
 			"Evaluate failure modes",
 			"Assess team capability to maintain",
 		)
-	case "analysis":
+	case "analysis", "analyze":
 		needs = append(needs,
 			"Present data and evidence for claims",
 			"Consider counterarguments",
 			"Quantify where possible",
 		)
-	case "planning":
+	case "planning", "plan":
 		needs = append(needs,
 			"Define concrete milestones with success criteria",
 			"Identify dependencies and blockers",
@@ -365,48 +404,83 @@ type xmlPromptBuilder struct{}
 func (b *xmlPromptBuilder) Build(a *intentAnalysis, cfg EnhanceConfig) string {
 	var sb strings.Builder
 
-	// Context section - who should the AI be
+	// Role section - use domain knowledge if available
 	persona := cfg.Persona
 	if persona == "" {
-		persona = defaultPersona(a.TaskType)
-	}
-
-	sb.WriteString("<context>\n")
-	sb.WriteString(persona)
-	sb.WriteString("\n</context>\n\n")
-
-	// Subject/topic section
-	sb.WriteString("<subject>\n")
-	sb.WriteString(a.Subject)
-	sb.WriteString("\n</subject>\n\n")
-
-	// Task section - what exactly to do
-	sb.WriteString("<task>\n")
-	sb.WriteString("Analyze the above and deliver the following:\n\n")
-
-	for i, action := range a.Actions {
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, capitalizeFirst(strings.TrimSpace(action))))
-	}
-
-	if len(a.ImpliedNeeds) > 0 {
-		sb.WriteString("\nAdditionally, address these critical dimensions:\n")
-		for i, need := range a.ImpliedNeeds {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", len(a.Actions)+i+1, need))
+		if a.DomainKnowledge != nil && a.DomainKnowledge.ExpertRole != "" {
+			persona = "You are a " + a.DomainKnowledge.ExpertRole + "."
+		} else {
+			persona = defaultPersona(a.TaskType)
 		}
 	}
-	sb.WriteString("</task>\n\n")
+
+	sb.WriteString("<role>\n")
+	sb.WriteString(persona)
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("You've been asked to help with: \"%s\"\n", a.RawIntent))
+	sb.WriteString("Your job is to provide a comprehensive, actionable response that minimizes back-and-forth. ")
+	sb.WriteString("Cover everything a competent professional would think about, including things the user hasn't explicitly asked for.\n")
+	sb.WriteString("</role>\n\n")
+
+	// Context section
+	sb.WriteString("<context>\n")
+	sb.WriteString(fmt.Sprintf("The user wants to: %s\n", a.RawIntent))
+	sb.WriteString(fmt.Sprintf("Domain: %s\n", a.Domain))
+	sb.WriteString(fmt.Sprintf("Task: %s\n", a.TaskType))
+	
+	if len(a.ImpliedNeeds) > 0 {
+		sb.WriteString("\nKey concerns to address:\n")
+		for _, concern := range a.ImpliedNeeds {
+			sb.WriteString(fmt.Sprintf("- %s\n", concern))
+		}
+	}
+	sb.WriteString("</context>\n\n")
+
+	// Instructions section with domain-specific output sections
+	sb.WriteString("<instructions>\n")
+	sb.WriteString("Provide a detailed, implementation-ready response covering:\n\n")
+	
+	if a.DomainKnowledge != nil && len(a.DomainKnowledge.OutputSections) > 0 {
+		for _, section := range a.DomainKnowledge.OutputSections {
+			sb.WriteString(fmt.Sprintf("### %s\n", section))
+		}
+	} else {
+		// Fallback to actions-based output
+		for i, action := range a.Actions {
+			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, capitalizeFirst(strings.TrimSpace(action))))
+		}
+	}
+	sb.WriteString("</instructions>\n\n")
+
+	// Constraints section with domain-specific constraints
+	if !cfg.NoConstraints {
+		sb.WriteString("<constraints>\n")
+		if a.DomainKnowledge != nil && len(a.DomainKnowledge.Constraints) > 0 {
+			for _, constraint := range a.DomainKnowledge.Constraints {
+				sb.WriteString(fmt.Sprintf("- %s\n", constraint))
+			}
+			sb.WriteString("\nGeneral rules:\n")
+			sb.WriteString("- Be specific and opinionated. Don't list 5 options - recommend 1 and explain why.\n")
+			sb.WriteString("- Include code snippets, schemas, or diagrams where they add clarity.\n")
+			sb.WriteString("- If something is a bad idea, say so directly and explain the alternative.\n")
+			sb.WriteString("- Assume the user is technical but new to this specific domain.\n")
+			sb.WriteString("- Prioritize actionability: every section should end with something the user can DO.\n")
+		} else {
+			sb.WriteString(buildConstraints(a))
+		}
+		sb.WriteString("</constraints>\n\n")
+	}
 
 	// Output format section
 	sb.WriteString("<output_format>\n")
-	sb.WriteString(buildOutputFormat(a))
-	sb.WriteString("</output_format>\n\n")
-
-	// Constraints section
-	if !cfg.NoConstraints {
-		sb.WriteString("<constraints>\n")
-		sb.WriteString(buildConstraints(a))
-		sb.WriteString("</constraints>\n")
+	sb.WriteString("Structure your response with clear headers for each section.\n")
+	sb.WriteString("Use code blocks for any schemas, commands, or technical specs.\n")
+	if a.Domain == "gaming" || a.Domain == "ecommerce" || a.Domain == "saas" || a.Domain == "mobile" {
+		sb.WriteString("End with a \"START HERE\" section: the literal first 3 things to build, in order, with estimated time for each.\n")
+	} else {
+		sb.WriteString("End with actionable next steps.\n")
 	}
+	sb.WriteString("</output_format>\n")
 
 	return sb.String()
 }
@@ -419,34 +493,51 @@ func (b *markdownPromptBuilder) Build(a *intentAnalysis, cfg EnhanceConfig) stri
 
 	persona := cfg.Persona
 	if persona == "" {
-		persona = defaultPersona(a.TaskType)
+		if a.DomainKnowledge != nil && a.DomainKnowledge.ExpertRole != "" {
+			persona = "You are a " + a.DomainKnowledge.ExpertRole + "."
+		} else {
+			persona = defaultPersona(a.TaskType)
+		}
 	}
 
 	sb.WriteString("## Role\n\n")
 	sb.WriteString(persona)
-	sb.WriteString("\n\n")
-
-	sb.WriteString("## Subject\n\n")
-	sb.WriteString(a.Subject)
-	sb.WriteString("\n\n")
-
-	sb.WriteString("## Task\n\n")
-	for i, action := range a.Actions {
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, capitalizeFirst(strings.TrimSpace(action))))
-	}
-
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("You've been asked to help with: \"%s\"\n", a.RawIntent))
+	sb.WriteString("\n## Context\n\n")
+	sb.WriteString(fmt.Sprintf("The user wants to: %s\n\n", a.RawIntent))
+	sb.WriteString(fmt.Sprintf("Domain: %s\n\n", a.Domain))
+	sb.WriteString(fmt.Sprintf("Task: %s\n", a.TaskType))
+	
 	if len(a.ImpliedNeeds) > 0 {
-		sb.WriteString("\nAlso address:\n")
-		for i, need := range a.ImpliedNeeds {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", len(a.Actions)+i+1, need))
+		sb.WriteString("\nKey concerns to address:\n")
+		for _, concern := range a.ImpliedNeeds {
+			sb.WriteString(fmt.Sprintf("- %s\n", concern))
 		}
 	}
 
-	sb.WriteString("\n## Output Format\n\n")
-	sb.WriteString(buildOutputFormat(a))
+	sb.WriteString("\n## Instructions\n\n")
+	if a.DomainKnowledge != nil && len(a.DomainKnowledge.OutputSections) > 0 {
+		sb.WriteString("Provide a detailed, implementation-ready response covering:\n\n")
+		for _, section := range a.DomainKnowledge.OutputSections {
+			sb.WriteString(fmt.Sprintf("### %s\n", section))
+		}
+	} else {
+		for i, action := range a.Actions {
+			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, capitalizeFirst(strings.TrimSpace(action))))
+		}
+	}
 
-	sb.WriteString("\n## Constraints\n\n")
-	sb.WriteString(buildConstraints(a))
+	if !cfg.NoConstraints {
+		sb.WriteString("\n## Constraints\n\n")
+		if a.DomainKnowledge != nil && len(a.DomainKnowledge.Constraints) > 0 {
+			for _, constraint := range a.DomainKnowledge.Constraints {
+				sb.WriteString(fmt.Sprintf("- %s\n", constraint))
+			}
+		} else {
+			sb.WriteString(buildConstraints(a))
+		}
+	}
 
 	return sb.String()
 }
@@ -457,14 +548,21 @@ func defaultPersona(taskType string) string {
 		"business_analysis": "You are a seasoned venture analyst and strategy consultant with experience evaluating 500+ business ideas across multiple industries. You combine market data rigor with founder-level pragmatism. Your job is to give an honest, evidence-based assessment - not encouragement.",
 		"code_review":       "You are a principal software engineer with 15+ years of production experience. You prioritize security, correctness, and maintainability over cleverness.",
 		"debugging":         "You are an expert debugger who thinks systematically. You trace root causes, not symptoms, and always consider edge cases.",
+		"debug":             "You are an expert debugger who thinks systematically. You trace root causes, not symptoms, and always consider edge cases.",
 		"architecture":      "You are a principal architect who has designed and operated systems at scale. You evaluate decisions through the lens of operational reality, not theoretical elegance.",
 		"analysis":          "You are a senior analyst who combines quantitative rigor with strategic thinking. Every claim must be backed by evidence or clearly marked as assumption.",
+		"analyze":           "You are a senior analyst who combines quantitative rigor with strategic thinking. Every claim must be backed by evidence or clearly marked as assumption.",
 		"planning":          "You are an experienced program manager who breaks complex initiatives into executable phases with clear milestones, dependencies, and risk mitigations.",
+		"plan":              "You are an experienced program manager who breaks complex initiatives into executable phases with clear milestones, dependencies, and risk mitigations.",
 		"writing":           "You are a professional writer and editor who crafts clear, compelling content tailored to a specific audience and purpose.",
 		"explanation":       "You are an expert educator who builds understanding from first principles, using concrete examples and analogies.",
 		"refactoring":       "You are a senior engineer focused on code quality. You improve readability, reduce complexity, and eliminate duplication while preserving behavior.",
 		"testing":           "You are a QA engineer who thinks in edge cases, boundary conditions, and failure modes.",
 		"transformation":    "You are a technical specialist in data and code transformation, ensuring accuracy and completeness.",
+		"migrate":           "You are a migration specialist who ensures data integrity and minimizes downtime during system transitions.",
+		"optimize":          "You are a performance engineer who identifies bottlenecks and applies targeted optimizations based on profiling data.",
+		"build":             "You are a senior software architect and hands-on engineer who turns concepts into working systems.",
+		"compare":           "You are an experienced technical evaluator who provides balanced comparisons with concrete trade-offs.",
 		"general":           "You are a senior expert in the relevant domain. Be thorough, specific, and actionable in your analysis.",
 	}
 

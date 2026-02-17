@@ -26,11 +26,11 @@ func TestEnhance_BasicIntent(t *testing.T) {
 	if result == nil || result.Prompt == "" {
 		t.Fatal("expected non-empty prompt")
 	}
-	if !strings.Contains(result.Prompt, "<context>") {
-		t.Error("expected <context> in prompt")
+	if !strings.Contains(result.Prompt, "<role>") && !strings.Contains(result.Prompt, "<context>") {
+		t.Error("expected <role> or <context> in prompt")
 	}
-	if !strings.Contains(result.Prompt, "<task>") {
-		t.Error("expected <task> in prompt")
+	if !strings.Contains(result.Prompt, "<instructions>") && !strings.Contains(result.Prompt, "<task>") {
+		t.Error("expected <instructions> or <task> in prompt")
 	}
 }
 
@@ -39,8 +39,8 @@ func TestEnhance_OutputFormatXML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(result.Prompt, "<context>") {
-		t.Error("xml format should contain context tags")
+	if !strings.Contains(result.Prompt, "<role>") && !strings.Contains(result.Prompt, "<context>") {
+		t.Error("xml format should contain role or context tags")
 	}
 }
 
@@ -59,7 +59,7 @@ func TestEnhance_OutputFormatDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(result.Prompt, "<context>") {
+	if !strings.Contains(result.Prompt, "<role>") && !strings.Contains(result.Prompt, "<context>") {
 		t.Error("default format should be xml-like")
 	}
 }
