@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +32,19 @@ type Model struct {
 	OutputPerMTok float64 // cost per 1M output tokens in USD
 	ContextWindow int     // max context window size in tokens
 	Provider      string
+}
+
+// UnstructuredMultiplier returns the rework multiplier for unstructured prompting
+// by price tier: expensive models (users careful) 2.2x, mid 2.8x, cheap 3.5x.
+func UnstructuredMultiplier(inputPerMTok float64) float64 {
+	switch {
+	case inputPerMTok > 10.0:
+		return 2.2
+	case inputPerMTok > 2.0:
+		return 2.8
+	default:
+		return 3.5
+	}
 }
 
 // CostEstimate holds token and cost breakdown for a prompt
@@ -120,6 +134,17 @@ var Providers = map[string]Provider{
 			{ID: "deepseek-reasoner", Name: "DeepSeek R1", InputPerMTok: 0.55, OutputPerMTok: 2.19, ContextWindow: 64000, Provider: "deepseek"},
 		},
 	},
+	// Atlas is the codename for promptctl's deployed LLM (no third-party API key required when using hosted endpoint).
+	"promptctl": {
+		Name:    "Promptctl",
+		BaseURL: "", // use PROMPTCTL_LLM_URL at runtime
+		EnvKey:  "PROMPTCTL_API_KEY",
+		KeyURL:  "https://github.com/oleg-koval/promptctl",
+		Order:   0,
+		Models: []Model{
+			{ID: "atlas", Name: "Atlas (hosted)", InputPerMTok: 0, OutputPerMTok: 0, ContextWindow: 128000, Provider: "promptctl"},
+		},
+	},
 }
 
 // -----------------------------------------------------------------------
@@ -185,15 +210,12 @@ func EstimateCost(prompt string, modelID string, promptType string) (*CostEstima
 	outputCost := float64(outputTokens) / 1_000_000 * model.OutputPerMTok
 	totalCost := inputCost + outputCost
 
-	// Estimate the cost of unstructured prompting.
-	// An unstructured prompt is typically:
-	// - 40-60% shorter (fewer instructions = less input cost)
-	// - BUT produces 2-4x more output tokens (rambling, unfocused responses)
-	// - AND often requires 2-3 follow-up calls to get what you actually need
-	//
-	// Net effect: unstructured prompting costs 2-4x more per useful result.
-	unstructuredMultiplier := 3.0 // conservative middle estimate
-	wastedCost := totalCost * unstructuredMultiplier
+	// Estimate the cost of unstructured prompting by price tier:
+	// expensive (Opus, GPT-4): users careful, fewer rework → 2.2x
+	// mid (Sonnet, GPT-4o): average rework → 2.8x
+	// cheap (Haiku, Groq, DeepSeek): users sloppy, more rework → 3.5x
+	mult := UnstructuredMultiplier(model.InputPerMTok)
+	wastedCost := totalCost * mult
 	savings := wastedCost - totalCost
 
 	return &CostEstimate{
@@ -219,7 +241,7 @@ func FormatCostEstimate(est *CostEstimate) string {
 	sb.WriteString(fmt.Sprintf("  Est. output:      ~%s tokens\n", formatNum(est.EstOutputTokens)))
 	sb.WriteString(fmt.Sprintf("  ─────────────────────────────\n"))
 	sb.WriteString(fmt.Sprintf("  Est. cost:        $%.4f\n", est.TotalEstCost))
-	sb.WriteString(fmt.Sprintf("  Without promptctl: $%.4f  (avg. 3x - rework, rambling, follow-ups)\n", est.WastedWithout))
+	sb.WriteString(fmt.Sprintf("  Without promptctl: $%.4f  (rework, rambling, follow-ups)\n", est.WastedWithout))
 	sb.WriteString(fmt.Sprintf("  You save:         $%.4f  (%.0f%%)\n", est.Savings, est.SavingsPercent))
 
 	return sb.String()
@@ -232,24 +254,37 @@ func FormatCostComparison(prompt string, promptType string) string {
 	sb.WriteString("  Model                      Input tok   Est. cost   Without promptctl   Savings\n")
 	sb.WriteString("  ───────────────────────────────────────────────────────────────────────────────\n")
 
-	for _, providerName := range []string{"anthropic", "openai", "groq", "deepseek"} {
+	for _, providerName := range []string{"promptctl", "anthropic", "openai", "groq", "deepseek"} {
 		provider := Providers[providerName]
 		for _, model := range provider.Models {
 			est, err := EstimateCost(prompt, model.ID, promptType)
 			if err != nil {
 				continue
 			}
-			sb.WriteString(fmt.Sprintf("  %-26s %7s     $%.4f       $%.4f            %.0f%%\n",
+			savPct := fmt.Sprintf("%.0f%%", est.SavingsPercent)
+			if est.WastedWithout == 0 || math.IsNaN(est.SavingsPercent) {
+				savPct = "N/A"
+			}
+			sb.WriteString(fmt.Sprintf("  %-26s %7s     $%.4f       $%.4f            %s\n",
 				model.Name,
 				formatNum(est.InputTokens),
 				est.TotalEstCost,
 				est.WastedWithout,
-				est.SavingsPercent,
+				savPct,
 			))
 		}
 	}
 
 	return sb.String()
+}
+
+// AnnualSavingsProjection returns estimated annual savings (low, high) in USD
+// for given per-call savings and calls per day. Range is ±15% of point estimate.
+func AnnualSavingsProjection(savingsPerCall float64, callsPerDay int) (low, high float64) {
+	annual := savingsPerCall * float64(callsPerDay*365)
+	low = annual * 0.85
+	high = annual * 1.15
+	return low, high
 }
 
 // -----------------------------------------------------------------------
@@ -268,8 +303,18 @@ func Complete(prompt string, modelID string) (*CompletionResult, error) {
 		return nil, fmt.Errorf("unknown provider: %s", model.Provider)
 	}
 
+	baseURL := provider.BaseURL
+	if model.Provider == "promptctl" {
+		if u := os.Getenv("PROMPTCTL_LLM_URL"); u != "" {
+			baseURL = u
+		}
+		if baseURL == "" {
+			return nil, fmt.Errorf("Promptctl (Atlas) requires PROMPTCTL_LLM_URL to be set to your deployed LLM endpoint")
+		}
+	}
+
 	apiKey := getAPIKey(model.Provider, provider.EnvKey)
-	if apiKey == "" {
+	if apiKey == "" && model.Provider != "promptctl" {
 		return nil, fmt.Errorf("no API key found for %s. Set it with:\n  promptctl config --provider=%s --api-key=YOUR_KEY\n  or export %s=YOUR_KEY",
 			provider.Name, model.Provider, provider.EnvKey)
 	}
@@ -279,10 +324,12 @@ func Complete(prompt string, modelID string) (*CompletionResult, error) {
 	var result *CompletionResult
 	switch model.Provider {
 	case "anthropic":
-		result, err = callAnthropic(provider.BaseURL, apiKey, *model, prompt)
+		result, err = callAnthropic(baseURL, apiKey, *model, prompt)
+	case "promptctl":
+		result, err = callOpenAICompatible(baseURL, apiKey, *model, prompt)
 	default:
 		// OpenAI-compatible API (works for OpenAI, Groq, DeepSeek)
-		result, err = callOpenAICompatible(provider.BaseURL, apiKey, *model, prompt)
+		result, err = callOpenAICompatible(baseURL, apiKey, *model, prompt)
 	}
 
 	if err != nil {
@@ -387,7 +434,9 @@ func callOpenAICompatible(baseURL, apiKey string, model Model, prompt string) (*
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
@@ -510,7 +559,7 @@ func getAPIKey(provider, envKey string) string {
 
 // ProviderKeys returns provider keys in display order
 func ProviderKeys() []string {
-	return []string{"anthropic", "openai", "groq", "deepseek"}
+	return []string{"promptctl", "anthropic", "openai", "groq", "deepseek"}
 }
 
 // FindModel searches all providers for a model by ID or name
@@ -531,7 +580,7 @@ func FindModel(query string) (*Model, error) {
 // ListModels returns all supported models across all providers
 func ListModels() []Model {
 	var models []Model
-	for _, providerName := range []string{"anthropic", "openai", "groq", "deepseek"} {
+	for _, providerName := range []string{"promptctl", "anthropic", "openai", "groq", "deepseek"} {
 		provider := Providers[providerName]
 		models = append(models, provider.Models...)
 	}
@@ -542,13 +591,13 @@ func ListModels() []Model {
 func FormatModelList() string {
 	var sb strings.Builder
 
-	sb.WriteString("  Provider     Model                       Input/MTok   Output/MTok   Context\n")
-	sb.WriteString("  ────────────────────────────────────────────────────────────────────────────\n")
+	sb.WriteString("  Provider     Model                         In ($/1M tok)   Out ($/1M tok)   Max context\n")
+	sb.WriteString("  ──────────────────────────────────────────────────────────────────────────────────────────\n")
 
-	for _, providerName := range []string{"anthropic", "openai", "groq", "deepseek"} {
+	for _, providerName := range []string{"promptctl", "anthropic", "openai", "groq", "deepseek"} {
 		provider := Providers[providerName]
 		for _, model := range provider.Models {
-			sb.WriteString(fmt.Sprintf("  %-12s %-27s $%-10.2f $%-11.2f %sk\n",
+			sb.WriteString(fmt.Sprintf("  %-12s %-27s $%-14.2f $%-15.2f %sk\n",
 				provider.Name,
 				model.Name,
 				model.InputPerMTok,

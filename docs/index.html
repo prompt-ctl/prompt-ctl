@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>promptctl - Stop wasting money on bad prompts</title>
-    <meta name="description" content="CLI toolkit that transforms raw ideas into structured, optimized prompts. Save ~67% on LLM API costs. Supports Claude, GPT-4, Groq, DeepSeek. Install via Homebrew.">
+    <meta name="description" content="CLI toolkit that transforms raw ideas into structured, optimized prompts. Save 55–71% on LLM API costs. Supports Claude, GPT-4, Groq, DeepSeek. Install via Homebrew.">
     <meta name="keywords" content="prompt engineering, CLI, LLM, cost optimization, Claude, GPT-4, developer tools">
 
     <!-- Open Graph -->
     <meta property="og:title" content="promptctl - Stop wasting money on bad prompts">
-    <meta property="og:description" content="CLI toolkit that saves ~67% on LLM costs by structuring every prompt for maximum signal, minimum waste.">
+    <meta property="og:description" content="CLI toolkit that saves 55–71% on LLM costs by structuring every prompt for maximum signal, minimum waste.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://promptctl.dev">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="promptctl - Stop wasting money on bad prompts">
-    <meta name="twitter:description" content="CLI toolkit that saves ~67% on LLM costs by structuring every prompt.">
+    <meta name="twitter:description" content="CLI toolkit that saves 55–71% on LLM costs by structuring every prompt.">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -542,19 +542,45 @@
                 </tr>
             </thead>
             <tbody>
-                <tr><td>Claude Sonnet 4.5</td><td>$0.0197</td><td class="waste">$0.0590</td><td class="savings">67% ($0.039)</td></tr>
-                <tr><td>Claude Haiku 4.5</td><td>$0.0066</td><td class="waste">$0.0197</td><td class="savings">67% ($0.013)</td></tr>
-                <tr><td>Claude Opus 4.6</td><td>$0.0328</td><td class="waste">$0.0983</td><td class="savings">67% ($0.066)</td></tr>
-                <tr><td>GPT-5</td><td>$0.0127</td><td class="waste">$0.0381</td><td class="savings">67% ($0.025)</td></tr>
-                <tr><td>GPT-5.2</td><td>$0.0178</td><td class="waste">$0.0533</td><td class="savings">67% ($0.036)</td></tr>
-                <tr><td>Llama 4 Maverick (Groq)</td><td>$0.0008</td><td class="waste">$0.0025</td><td class="savings">67% ($0.002)</td></tr>
-                <tr><td>DeepSeek Chat</td><td>$0.0007</td><td class="waste">$0.0020</td><td class="savings">67% ($0.001)</td></tr>
-                <tr><td>Gemini 2.5 Pro</td><td>$0.0127</td><td class="waste">$0.0381</td><td class="savings">67% ($0.025)</td></tr>
+                <tr><td>Claude Sonnet 4.5</td><td>$0.0197</td><td class="waste">$0.0550</td><td class="savings">64% ($0.035)</td></tr>
+                <tr><td>Claude Haiku 4.5</td><td>$0.0066</td><td class="waste">$0.0229</td><td class="savings">71% ($0.016)</td></tr>
+                <tr><td>Claude Opus 4.6</td><td>$0.0328</td><td class="waste">$0.0721</td><td class="savings">55% ($0.039)</td></tr>
+                <tr><td>GPT-5</td><td>$0.0127</td><td class="waste">$0.0444</td><td class="savings">71% ($0.032)</td></tr>
+                <tr><td>GPT-5.2</td><td>$0.0178</td><td class="waste">$0.0622</td><td class="savings">71% ($0.044)</td></tr>
+                <tr><td>Llama 4 Maverick (Groq)</td><td>$0.0008</td><td class="waste">$0.0029</td><td class="savings">71% ($0.002)</td></tr>
+                <tr><td>DeepSeek Chat</td><td>$0.0007</td><td class="waste">$0.0023</td><td class="savings">71% ($0.002)</td></tr>
+                <tr><td>Gemini 2.5 Pro</td><td>$0.0127</td><td class="waste">$0.0353</td><td class="savings">64% ($0.023)</td></tr>
             </tbody>
         </table>
         <p style="color:var(--text-3);font-size:12px;font-family:var(--mono);margin-top:16px">
-            Based on a ~550 token structured prompt, ~1,200 output tokens. Unstructured estimate includes avg. 3× rework factor. Pricing as of 2026-02-13.
+            Based on a ~550 token structured prompt, ~1,200 output tokens. Unstructured baseline varies by model tier (expensive 2.2×, mid 2.8×, cheap 3.5×). Pricing as of 2026-02-13.
         </p>
+
+        <div class="annual-projection" style="margin-top:48px">
+            <h3 style="font-size:1.15rem;margin-bottom:12px;color:var(--text-2)">What that looks like over a year</h3>
+            <p style="color:var(--text-3);font-size:14px;margin-bottom:24px;max-width:560px">Same prompt, different usage. Annual savings scale with how often you call.</p>
+            <div class="annual-cols" style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:24px">
+                <div class="annual-col" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center">
+                    <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Light (hobby)</div>
+                    <div style="font-family:var(--mono);font-size:15px;color:var(--text-2);margin-bottom:4px">10 calls/day · 300/mo</div>
+                    <div style="font-size:24px;font-weight:700;color:var(--green)">$200–400</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:4px">annual savings</div>
+                </div>
+                <div class="annual-col" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center">
+                    <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Regular (daily)</div>
+                    <div style="font-family:var(--mono);font-size:15px;color:var(--text-2);margin-bottom:4px">30 calls/day · 900/mo</div>
+                    <div style="font-size:24px;font-weight:700;color:var(--green)">$500–1,200</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:4px">annual savings</div>
+                </div>
+                <div class="annual-col" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center">
+                    <div style="font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Heavy (team/CI)</div>
+                    <div style="font-family:var(--mono);font-size:15px;color:var(--text-2);margin-bottom:4px">100 calls/day · 3,000/mo</div>
+                    <div style="font-size:32px;font-weight:800;color:var(--green)">$1,500–3,000</div>
+                    <div style="font-size:12px;color:var(--text-3);margin-top:4px">annual savings</div>
+                </div>
+            </div>
+            <p style="font-size:15px;font-weight:600;color:var(--text);max-width:520px">90% of developers overspend $2,000+/year on unstructured prompts. How much are you wasting?</p>
+        </div>
     </div>
 </section>
 

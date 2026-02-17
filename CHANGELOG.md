@@ -4,6 +4,13 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+## [0.7.1] – 2026-02-17
+
+- **Models:** Default model selectable via `promptctl models --set`; added Atlas (Promptctl hosted LLM) as optional model; clearer models list (value-focused intro, column labels).
+- **Config:** Remove or update API key per provider (`--api-key=` or `--remove-api-key`); README clarifies create uses hosted enhancer (no user API key).
+- **Ratings:** If user rates output < 3, offer one free retry per day; ratings persisted to `~/.promptctl/ratings.json` and POST to enhance `/rating`; worker POST /rating for analytics; daily digest doc for hello@prompt-ctl.com.
+- **Site analytics:** Events for Try button click, install/copy, Google OAuth login; auth redirect includes provider for `try_login_google`.
+- **Worker:** worker-alerts cron schema fix (`crons` array); WRANGLER_ENV_VARS.md and secret-list loop.
 - Try auth: error redirect no double-slash; fragment `reason` (missing, state, exchange, email, config) for debugging.
 - GitHub OAuth troubleshooting in worker-try docs (callback URL, secrets).
 

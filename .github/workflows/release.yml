@@ -64,3 +64,23 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Casks/promptctl.rb
           git diff --staged --quiet || (git commit -m "promptctl ${TAG}" && git push)
+
+  build-mac-app:
+    runs-on: macos-14
+    needs: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Mac app and create DMG
+        run: ./scripts/build-mac-app.sh
+
+      - name: Upload DMG to promptctl-releases
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release upload "$TAG" \
+            promptctl-app/promptctl-macos.dmg \
+            --repo oleg-koval/promptctl-releases \
+            --clobber

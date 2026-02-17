@@ -117,7 +117,7 @@ promptctl cp review --file=src/auth.ts
 
 ## Enhance mode
 
-By default, `promptctl create "your intent"` uses the **hosted LLM enhancer** (no env or keys needed). To use the offline rule-based enhancer instead:
+By default, `promptctl create "your intent"` uses the **hosted LLM enhancer** (no env or keys needed). **Your Claude/OpenAI API key is not used for create** — it is only used for `promptctl send` and `promptctl cost`. The hosted enhancer uses its own model. To use the offline rule-based enhancer instead:
 
 ```bash
 export PROMPTCTL_ENHANCE=rule

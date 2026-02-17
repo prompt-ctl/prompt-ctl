@@ -2,14 +2,17 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/oleg-koval/promptctl/config"
 	"github.com/oleg-koval/promptctl/internal/safepath"
@@ -17,7 +20,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.7.0"
+const version = "0.7.1"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -37,6 +40,8 @@ func Execute() error {
 		return sendPrompt()
 	case "cost":
 		return showCost()
+	case "savings":
+		return showSavings()
 	case "models":
 		return listModels()
 	case "config":
@@ -121,11 +126,13 @@ EXAMPLES:
   promptctl send review --file=auth.ts --model=gpt-5
   promptctl cost review --file=main.go --compare
   promptctl config --provider=anthropic --api-key=sk-ant-...
+  promptctl config --provider=anthropic --api-key=          # remove key
+  promptctl config --provider=openai --remove-api-key       # remove key
 
 COST SAVINGS:
-  Structured prompts produce focused responses in 1 call.
-  Unstructured prompts cost ~3x more: rambling + rework + follow-ups.
-  Run 'promptctl cost --compare' to see exactly how much you save.`)
+  cost --compare     Compare costs across models + annual projection
+  savings            Project annual savings at your usage level
+  Structured prompts = fewer rework cycles. Run 'promptctl cost --compare' to see per-model savings.`)
 }
 
 // createPrompt transforms raw intent into a structured prompt
@@ -185,14 +192,29 @@ func createPrompt() error {
 
 	fmt.Println(result.Prompt)
 
-	// Ask user to rate output when running interactively (stdin and stdout are TTYs; skip when piped)
+	currentResult := result
 	if !hasFlag("--no-rate") && interactive() {
-		askUserRating()
+		rating := askUserRating()
+		if rating >= 1 {
+			persistRating(rating, len(intent), appCfg.EnhanceURL)
+		}
+		if rating >= 1 && rating < 3 && !freeRetryUsedToday() {
+			fmt.Fprint(os.Stderr, "\nWant to try again for free? (once per day) (y/n): ")
+			ans := readLineStdin()
+			if ans == "y" || ans == "Y" {
+				markFreeRetryUsed()
+				result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+				if err == nil {
+					currentResult = result2
+					fmt.Println(result2.Prompt)
+				}
+			}
+		}
 	}
 
 	// When interactive and no --save, offer to save to memory (skip when stdout is piped)
-	if saveName == "" && result.Prompt != "" && interactive() {
-		askSaveToMemory(result, appCfg)
+	if saveName == "" && currentResult.Prompt != "" && interactive() {
+		askSaveToMemory(currentResult, appCfg)
 	}
 
 	// If --save was specified, write as a reusable template
@@ -656,21 +678,90 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
-// askUserRating prompts for a 1-5 rating on stderr and thanks the user.
-func askUserRating() {
+// askUserRating prompts for a 1-5 rating on stderr. Returns rating (1-5), or 0 if skipped/invalid.
+func askUserRating() int {
 	fmt.Fprint(os.Stderr, "\nRate this output (1-5, Enter to skip): ")
 	var input string
 	fmt.Scanln(&input)
 	input = strings.TrimSpace(input)
 	if input == "" {
-		return
+		return 0
 	}
 	var n int
 	if _, err := fmt.Sscanf(input, "%d", &n); err != nil || n < 1 || n > 5 {
 		fmt.Fprintln(os.Stderr, "Skipped (use 1-5).")
-		return
+		return 0
 	}
 	fmt.Fprintf(os.Stderr, "Thanks — %d/5.\n", n)
+	return n
+}
+
+// persistRating appends a rating to ~/.promptctl/ratings.json and optionally POSTs to enhance URL /rating.
+func persistRating(rating int, intentLen int, enhanceURL string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+	path := filepath.Join(dir, "ratings.json")
+	date := time.Now().UTC().Format("2006-01-02")
+	line := fmt.Sprintf(`{"rating":%d,"date":%q,"intent_len":%d}`+"\n", rating, date, intentLen)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	_, _ = f.WriteString(line)
+	f.Close()
+	if enhanceURL != "" {
+		go postRatingToEnhance(enhanceURL, rating, intentLen)
+	}
+}
+
+func postRatingToEnhance(baseURL string, rating, intentLen int) {
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	body := []byte(fmt.Sprintf(`{"rating":%d,"intent_len":%d}`, rating, intentLen))
+	req, err := http.NewRequest("POST", baseURL+"/rating", bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
+}
+
+// freeRetryUsedToday returns true if the user already used their one free retry today.
+func freeRetryUsedToday() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return true
+	}
+	path := filepath.Join(home, ".promptctl", "free_retry_used")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	today := time.Now().UTC().Format("2006-01-02")
+	return strings.TrimSpace(string(data)) == today
+}
+
+// markFreeRetryUsed records that the user used their free retry today.
+func markFreeRetryUsed() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	today := time.Now().UTC().Format("2006-01-02")
+	_ = os.WriteFile(filepath.Join(dir, "free_retry_used"), []byte(today), 0644)
 }
 
 // readLineStdin reads one line from stdin (trimmed). Used for interactive prompts.
@@ -919,7 +1010,12 @@ Examples:
 		formatNumSimple(result.InputTokens), formatNumSimple(result.OutputTokens))
 	fmt.Fprintf(os.Stderr, "  Cost:     $%.4f\n", result.ActualCost)
 	fmt.Fprintf(os.Stderr, "  Latency:  %.1fs\n", float64(result.LatencyMs)/1000)
-	fmt.Fprintf(os.Stderr, "  Saved:    ~$%.4f vs unstructured prompting\n\n", result.ActualCost*2)
+	savedVsUnstructured := result.ActualCost * 2 // fallback
+	if m, err := llm.FindModel(modelID); err == nil {
+		mult := llm.UnstructuredMultiplier(m.InputPerMTok)
+		savedVsUnstructured = result.ActualCost * (mult - 1)
+	}
+	fmt.Fprintf(os.Stderr, "  Saved:    ~$%.4f vs unstructured prompting\n\n", savedVsUnstructured)
 
 	return nil
 }
@@ -1033,7 +1129,13 @@ Options:
 	if hasFlag("--compare") {
 		fmt.Print("\n  Cost comparison across all models:\n")
 		fmt.Println(llm.FormatCostComparison(renderedPrompt, promptType))
-		fmt.Printf("  Prompt length: ~%s tokens\n\n", formatNumSimple(llm.EstimateTokens(renderedPrompt)))
+		fmt.Printf("  Prompt length: ~%s tokens\n", formatNumSimple(llm.EstimateTokens(renderedPrompt)))
+		estProj, errProj := llm.EstimateCost(renderedPrompt, modelID, promptType)
+		if errProj == nil {
+			low, high := llm.AnnualSavingsProjection(estProj.Savings, 30)
+			fmt.Printf("  At 30 calls/day, structured prompting saves ~$%.0f-%.0f/year\n", low, high)
+		}
+		fmt.Println()
 	} else {
 		est, err := llm.EstimateCost(renderedPrompt, modelID, promptType)
 		if err != nil {
@@ -1048,6 +1150,49 @@ Options:
 	return nil
 }
 
+// showSavings projects annual savings for the default model at a given calls/day.
+func showSavings() error {
+	callsPerDay := 30
+	for _, a := range os.Args[2:] {
+		if strings.HasPrefix(a, "--calls-per-day=") {
+			var n int
+			if _, err := fmt.Sscanf(strings.TrimPrefix(a, "--calls-per-day="), "%d", &n); err == nil && n > 0 && n <= 1000 {
+				callsPerDay = n
+			}
+			break
+		}
+	}
+
+	cfg, _ := llm.LoadConfig()
+	if cfg == nil {
+		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-5-20250929", APIKeys: make(map[string]string)}
+	}
+	modelID := cfg.DefaultModel
+	if modelID == "" {
+		modelID = "claude-sonnet-4-5-20250929"
+	}
+
+	// Representative prompt ~550 tokens (matches landing page baseline)
+	repPrompt := strings.Repeat("Review this code for correctness, performance, and style. Suggest concrete improvements. ", 30)
+	est, err := llm.EstimateCost(repPrompt, modelID, "general")
+	if err != nil {
+		return fmt.Errorf("could not estimate savings: %w", err)
+	}
+
+	low, high := llm.AnnualSavingsProjection(est.Savings, callsPerDay)
+	model, _ := llm.FindModel(modelID)
+	modelName := modelID
+	if model.Name != "" {
+		modelName = model.Name
+	}
+	fmt.Println()
+	fmt.Printf("  Model: %s (default)\n", modelName)
+	fmt.Printf("  At %d calls/day, structured prompting saves ~$%.0f-%.0f/year\n", callsPerDay, low, high)
+	fmt.Println("  Run 'promptctl cost --compare' for per-model breakdown.")
+	fmt.Println()
+	return nil
+}
+
 // listModels shows all models and lets user switch default
 func listModels() error {
 	cfg, _ := llm.LoadConfig()
@@ -1055,7 +1200,10 @@ func listModels() error {
 		cfg = &llm.Config{DefaultModel: "claude-sonnet-4-5-20250929", APIKeys: make(map[string]string)}
 	}
 
-	fmt.Print("\n  Supported models:\n")
+	fmt.Println()
+	fmt.Println("  Your default model is used by 'promptctl send' and 'promptctl cost' (use --model to override).")
+	fmt.Println("  Pick one that fits your budget and quality needs.")
+	fmt.Println()
 	fmt.Println(llm.FormatModelList())
 
 	// Show current default
@@ -1071,7 +1219,7 @@ func listModels() error {
 		return interactiveModelSwitch(cfg)
 	}
 
-	fmt.Println("  Switch model: promptctl models --set")
+	fmt.Println("  Change default: promptctl models --set")
 	fmt.Println()
 	return nil
 }
@@ -1196,7 +1344,7 @@ func configOnboarding() error {
 		fmt.Printf("    [%d] %-12s %s\n", i+1, provider.Name, priceRange)
 	}
 
-	fmt.Print("\n  Select provider (1-4): ")
+	fmt.Printf("\n  Select provider (1-%d): ", len(providerKeys))
 	providerInput := reader.ReadLine()
 
 	var providerIdx int
@@ -1320,7 +1468,7 @@ func configLLMFlags(vars map[string]string) error {
 
 	if provider, ok := vars["provider"]; ok {
 		if _, exists := llm.Providers[provider]; !exists {
-			return fmt.Errorf("unknown provider: '%s'. Supported: anthropic, openai, groq, deepseek", provider)
+			return fmt.Errorf("unknown provider: '%s'. Supported: promptctl, anthropic, openai, groq, deepseek", provider)
 		}
 		cfg.DefaultProvider = provider
 		fmt.Printf("Default provider: %s\n", provider)
@@ -1339,8 +1487,27 @@ func configLLMFlags(vars map[string]string) error {
 		if p, ok := vars["provider"]; ok {
 			provider = p
 		}
-		cfg.APIKeys[provider] = apiKey
-		fmt.Printf("API key stored for %s: %s\n", llm.Providers[provider].Name, maskKey(apiKey))
+		if _, exists := llm.Providers[provider]; !exists {
+			return fmt.Errorf("unknown provider: %q", provider)
+		}
+		if apiKey == "" || strings.ToLower(apiKey) == "remove" {
+			delete(cfg.APIKeys, provider)
+			fmt.Printf("API key removed for %s\n", llm.Providers[provider].Name)
+		} else {
+			cfg.APIKeys[provider] = strings.TrimSpace(apiKey)
+			fmt.Printf("API key stored for %s: %s\n", llm.Providers[provider].Name, maskKey(apiKey))
+		}
+	}
+	if hasFlag("--remove-api-key") {
+		provider := cfg.DefaultProvider
+		if p, ok := vars["provider"]; ok {
+			provider = p
+		}
+		if _, exists := llm.Providers[provider]; !exists {
+			return fmt.Errorf("unknown provider: %q", provider)
+		}
+		delete(cfg.APIKeys, provider)
+		fmt.Printf("API key removed for %s\n", llm.Providers[provider].Name)
 	}
 
 	return llm.SaveConfig(cfg)

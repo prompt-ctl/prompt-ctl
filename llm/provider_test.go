@@ -51,6 +51,27 @@ func TestFindModel_NotFound(t *testing.T) {
 	}
 }
 
+func TestUnstructuredMultiplier(t *testing.T) {
+	if got := UnstructuredMultiplier(15); got != 2.2 {
+		t.Errorf("InputPerMTok 15 (expensive): got %v, want 2.2", got)
+	}
+	if got := UnstructuredMultiplier(10.1); got != 2.2 {
+		t.Errorf("InputPerMTok 10.1: got %v, want 2.2", got)
+	}
+	if got := UnstructuredMultiplier(5); got != 2.8 {
+		t.Errorf("InputPerMTok 5 (mid): got %v, want 2.8", got)
+	}
+	if got := UnstructuredMultiplier(2.1); got != 2.8 {
+		t.Errorf("InputPerMTok 2.1: got %v, want 2.8", got)
+	}
+	if got := UnstructuredMultiplier(1); got != 3.5 {
+		t.Errorf("InputPerMTok 1 (cheap): got %v, want 3.5", got)
+	}
+	if got := UnstructuredMultiplier(0.2); got != 3.5 {
+		t.Errorf("InputPerMTok 0.2: got %v, want 3.5", got)
+	}
+}
+
 func TestEstimateCost(t *testing.T) {
 	est, err := EstimateCost("Hello world prompt", "gpt-5", "general")
 	if err != nil {
@@ -61,6 +82,10 @@ func TestEstimateCost(t *testing.T) {
 	}
 	if est.SavingsPercent <= 0 {
 		t.Error("SavingsPercent should be positive")
+	}
+	// gpt-5 is cheap tier (InputPerMTok 1.25) → 3.5x → ~71%
+	if est.SavingsPercent < 70 || est.SavingsPercent > 72 {
+		t.Errorf("gpt-5 savings percent should be ~71, got %.1f", est.SavingsPercent)
 	}
 }
 
@@ -106,10 +131,24 @@ func TestFormatCostComparison(t *testing.T) {
 	}
 }
 
+func TestAnnualSavingsProjection(t *testing.T) {
+	low, high := AnnualSavingsProjection(0.01, 30)
+	annual := 0.01 * 30 * 365 // 109.5
+	if low >= high {
+		t.Error("low should be < high")
+	}
+	if low > annual || high < annual {
+		t.Errorf("range should bracket %v: got low=%v high=%v", annual, low, high)
+	}
+}
+
 func TestProviderKeys(t *testing.T) {
 	keys := ProviderKeys()
-	if len(keys) != 4 {
-		t.Errorf("len(ProviderKeys) = %d, want 4", len(keys))
+	if len(keys) != 5 {
+		t.Errorf("len(ProviderKeys) = %d, want 5", len(keys))
+	}
+	if keys[0] != "promptctl" {
+		t.Errorf("first provider key = %q, want promptctl", keys[0])
 	}
 }
 
