@@ -23,7 +23,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.0"
+const version = "0.8.1"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
