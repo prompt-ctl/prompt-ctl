@@ -189,17 +189,15 @@ func createPrompt() error {
 	showScore := hasFlag("--score") || (appCfg.EnhanceMode == "llm" && appCfg.EnhanceURL != "")
 	if showScore {
 		sc := prompt.ScoreEnhanceResult(cfg.Intent, result.Prompt)
-		fmt.Fprintf(os.Stderr, "Quality score: %d/100", sc.Score)
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintf(os.Stderr, "  %s\n", ui.Success(fmt.Sprintf("Quality score: %d/100", sc.Score)))
 		if len(sc.Hints) > 0 {
-			fmt.Fprintf(os.Stderr, " — %s", sc.Hints[0])
-			for _, h := range sc.Hints[1:] {
-				fmt.Fprintf(os.Stderr, "; %s", h)
-			}
+			fmt.Fprintf(os.Stderr, "  %s\n", ui.Hint(strings.Join(sc.Hints, " · ")))
 		}
 		fmt.Fprintln(os.Stderr)
 	}
 
-	fmt.Println(result.Prompt)
+	fmt.Println(ui.FormatPromptForTerminal(result.Prompt))
 
 	currentResult := result
 	if !hasFlag("--no-rate") && interactive() {
@@ -215,12 +213,12 @@ func createPrompt() error {
 		}
 		if rating >= 1 && rating < 3 && !freeRetryUsedToday() {
 			retry, err := ui.Confirm("\nWant to try again for free? (once per day)", false)
-			if err == nil && retry {
+				if err == nil && retry {
 				markFreeRetryUsed()
 				result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 				if err == nil {
 					currentResult = result2
-					fmt.Println(result2.Prompt)
+					fmt.Println(ui.FormatPromptForTerminal(result2.Prompt))
 				}
 			}
 		}
