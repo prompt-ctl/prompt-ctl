@@ -1343,7 +1343,7 @@ func interactiveModelSwitch(cfg *llm.Config) error {
 		})
 	}
 
-	fmt.Printf("\n  ✓ Default model set to: %s (%s)\n\n", selected.model.Name, selected.model.ID)
+	fmt.Fprintf(os.Stderr, "\n  %s\n\n", ui.Success("✓ Default model set to: "+selected.model.Name+" ("+selected.model.ID+")"))
 	return nil
 }
 
@@ -1389,7 +1389,7 @@ func ensureLLMConfig() (*llm.Config, error) {
 		return nil, fmt.Errorf("no LLM config. Run `promptctl config` in a terminal to set up")
 	}
 	if onboarding.OnboardingSkipped() {
-		fmt.Fprintln(os.Stderr, onboarding.ReminderMessage())
+		fmt.Fprintln(os.Stderr, ui.Hint(onboarding.ReminderMessage()))
 	}
 	if err := configOnboarding(); err != nil {
 		return nil, err
@@ -1444,7 +1444,7 @@ func configOnboarding() error {
 	}
 	selectedProviderKey := providerKeys[providerIdx]
 	selectedProvider := llm.Providers[selectedProviderKey]
-	fmt.Printf("\n  ✓ Provider: %s\n\n", selectedProvider.Name)
+	fmt.Fprintf(os.Stderr, "\n  %s\n\n", ui.Success("✓ Provider: "+selectedProvider.Name))
 
 	// ── Step 2: Select model ─────────────────────────────────────
 	modelOptions := make([]string, len(selectedProvider.Models))
@@ -1471,7 +1471,7 @@ func configOnboarding() error {
 		return fmt.Errorf("invalid selection")
 	}
 	selectedModel := selectedProvider.Models[modelIdx]
-	fmt.Printf("\n  ✓ Model: %s\n\n", selectedModel.Name)
+	fmt.Fprintf(os.Stderr, "\n  %s\n\n", ui.Success("✓ Model: "+selectedModel.Name))
 
 	// ── Step 3: API key ──────────────────────────────────────────
 	existingKey := ""
