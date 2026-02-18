@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/internal/analytics"
 	"github.com/oleg-koval/promptctl/internal/onboarding"
 	"github.com/oleg-koval/promptctl/internal/safepath"
 	"github.com/oleg-koval/promptctl/internal/ui"
@@ -1359,6 +1360,11 @@ func configOnboarding() error {
 	if !ui.Interactive() {
 		return fmt.Errorf("run promptctl config in a terminal to set up")
 	}
+	_ = analytics.EnsureAnalyticsConsent()
+	consent, _ := analytics.ReadConsent()
+	if consent != nil && consent.Enabled && consent.ClientID != "" {
+		go analytics.SendEvent(consent.ClientID, "onboarding_started", nil)
+	}
 
 	cfg, err := llm.LoadConfig()
 	if err != nil {
@@ -1381,11 +1387,17 @@ func configOnboarding() error {
 	var providerChoice string
 	if err := ui.SelectOption("  Step 1/4 - Choose your LLM provider", providerOptions, &providerChoice); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return err
 	}
 	providerIdx := indexOf(providerOptions, providerChoice)
 	if providerIdx < 0 {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return fmt.Errorf("invalid selection")
 	}
 	selectedProviderKey := providerKeys[providerIdx]
@@ -1403,11 +1415,17 @@ func configOnboarding() error {
 	var modelChoice string
 	if err := ui.SelectOption("  Step 2/4 - Choose your default model", modelOptions, &modelChoice); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return err
 	}
 	modelIdx := indexOf(modelOptions, modelChoice)
 	if modelIdx < 0 {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return fmt.Errorf("invalid selection")
 	}
 	selectedModel := selectedProvider.Models[modelIdx]
@@ -1437,10 +1455,16 @@ func configOnboarding() error {
 	openBrowser(selectedProvider.KeyURL)
 	if err := ui.Input("  API key (paste and press Enter)", &keyInput); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return err
 	}
 	if strings.TrimSpace(keyInput) == "" {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
 	}
 	cfg.APIKeys[selectedProviderKey] = strings.TrimSpace(keyInput)
@@ -1452,9 +1476,18 @@ saveConfig:
 
 	if err := llm.SaveConfig(cfg); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 	_ = onboarding.ClearOnboardingSkipped()
+	if consent != nil && consent.Enabled && consent.ClientID != "" {
+		go analytics.SendEvent(consent.ClientID, "onboarding_completed", map[string]interface{}{
+			"model_id": selectedModel.ID,
+			"provider": selectedProviderKey,
+		})
+	}
 
 	// ── Step 4: Confirmation ─────────────────────────────────────
 	fmt.Println()
