@@ -4,6 +4,12 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+## [0.7.4] – 2026-02-17
+
+- **Enhance Worker (prompt generation):** Rebuilt prompt engine: rule-based domain + task classification, domain knowledge (gaming, fintech, saas, e-commerce, mobile, ai_ml, devops, education, healthcare, social, gardening, general), intent enrichment (tech, MVP, monetize, scale), and structured prompt assembly. Optional LLM refinement with Llama 3.1 8B for polish. Placeholder intents still get minimal prompts (no hallucination).
+- **Gardening domain:** Intents like "plant watering plan" now get horticulture-style prompts instead of software-architect.
+- **Worker tests:** Added promptEngine.test.js (classifyIntent, enrichIntent, assemblePrompt); README Testing section.
+
 ## [0.7.1] – 2026-02-17
 
 - **Models:** Default model selectable via `promptctl models --set`; added Atlas (Promptctl hosted LLM) as optional model; clearer models list (value-focused intro, column labels).
