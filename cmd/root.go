@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/internal/onboarding"
 	"github.com/oleg-koval/promptctl/internal/safepath"
+	"github.com/oleg-koval/promptctl/internal/ui"
 	"github.com/oleg-koval/promptctl/llm"
 	"github.com/oleg-koval/promptctl/prompt"
 )
@@ -912,7 +914,10 @@ Examples:
 	vars := parseVars(os.Args[2:])
 	modelID := vars["model"]
 	if modelID == "" {
-		cfg, _ := llm.LoadConfig()
+		cfg, err := ensureLLMConfig()
+		if err != nil {
+			return err
+		}
 		if cfg != nil {
 			modelID = cfg.DefaultModel
 		}
@@ -1319,6 +1324,27 @@ func configLLM() error {
 	return configOnboarding()
 }
 
+// ensureLLMConfig returns LLM config, running onboarding when missing and TTY. When not TTY and config missing, returns error.
+func ensureLLMConfig() (*llm.Config, error) {
+	cfg, err := llm.LoadConfig()
+	if err != nil {
+		cfg = nil
+	}
+	if cfg != nil && cfg.DefaultModel != "" && getAPIKeyStatus(cfg.DefaultProvider, cfg) {
+		return cfg, nil
+	}
+	if !ui.Interactive() {
+		return nil, fmt.Errorf("no LLM config. Run `promptctl config` in a terminal to set up")
+	}
+	if onboarding.OnboardingSkipped() {
+		fmt.Fprintln(os.Stderr, onboarding.ReminderMessage())
+	}
+	if err := configOnboarding(); err != nil {
+		return nil, err
+	}
+	return llm.LoadConfig()
+}
+
 // configOnboarding is the full interactive setup wizard
 func configOnboarding() error {
 	reader := newLineReader()
@@ -1349,6 +1375,7 @@ func configOnboarding() error {
 
 	var providerIdx int
 	if _, err := fmt.Sscanf(providerInput, "%d", &providerIdx); err != nil || providerIdx < 1 || providerIdx > len(providerKeys) {
+		_ = onboarding.MarkOnboardingSkipped()
 		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
 	}
 
@@ -1374,6 +1401,7 @@ func configOnboarding() error {
 
 	var modelIdx int
 	if _, err := fmt.Sscanf(modelInput, "%d", &modelIdx); err != nil || modelIdx < 1 || modelIdx > len(selectedProvider.Models) {
+		_ = onboarding.MarkOnboardingSkipped()
 		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
 	}
 
@@ -1421,6 +1449,7 @@ func configOnboarding() error {
 		}
 
 		if strings.TrimSpace(keyInput) == "" {
+			_ = onboarding.MarkOnboardingSkipped()
 			return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
 		}
 
@@ -1433,8 +1462,10 @@ saveConfig:
 	cfg.DefaultModel = selectedModel.ID
 
 	if err := llm.SaveConfig(cfg); err != nil {
+		_ = onboarding.MarkOnboardingSkipped()
 		return fmt.Errorf("failed to save config: %w", err)
 	}
+	_ = onboarding.ClearOnboardingSkipped()
 
 	// ── Step 4: Confirmation ─────────────────────────────────────
 	fmt.Println()
