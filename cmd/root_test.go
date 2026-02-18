@@ -214,3 +214,83 @@ func TestExecute_MemorySetDir(t *testing.T) {
 		t.Errorf("PromptsDir = %q, want %q", cfg.PromptsDir, abs)
 	}
 }
+
+func TestExecute_Savings_WithModel_UsesSpecifiedModel(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	_ = os.MkdirAll(filepath.Join(dir, ".promptctl"), 0755)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "savings", "--model=claude-haiku-4-5-20251001"}
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout; w.Close() }()
+	err := Execute()
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	out := buf.String()
+	if err != nil {
+		t.Fatalf("Execute() savings --model err = %v", err)
+	}
+	if !strings.Contains(out, "Haiku") && !strings.Contains(out, "claude-haiku") {
+		t.Errorf("savings --model=claude-haiku should show model name; got:\n%s", out)
+	}
+}
+
+func TestExecute_Help_ContainsNewUserSavingsHint(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "help"}
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout; w.Close() }()
+	_ = Execute()
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	out := buf.String()
+	if !strings.Contains(out, "New?") || !strings.Contains(out, "savings") {
+		t.Errorf("help should contain New? and savings hint; got:\n%s", out)
+	}
+}
+
+func TestExecute_Run_RequiredVarError_SuggestsVars(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	tplDir := filepath.Join(dir, ".promptctl", "templates")
+	_ = os.MkdirAll(tplDir, 0755)
+	_ = os.WriteFile(filepath.Join(tplDir, "review.yaml"), []byte("name: review\ndescription: x\nvariables:\n  - name: file\n    required: true\nbody: |\n  x"), 0644)
+	defer os.Unsetenv("HOME")
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "run", "review"}
+	err := Execute()
+	if err == nil {
+		t.Fatal("Execute() run review without --file should error")
+	}
+	if !strings.Contains(err.Error(), "promptctl vars") {
+		t.Errorf("error should suggest promptctl vars; got: %v", err)
+	}
+}
+
+func TestExecute_Help_ContainsMemorySavedFromCreate(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"promptctl", "help"}
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout; w.Close() }()
+	_ = Execute()
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	out := buf.String()
+	if !strings.Contains(out, "saved from create") && !strings.Contains(out, "Prompts you saved") {
+		t.Errorf("help MEMORY section should mention saved from create; got:\n%s", out)
+	}
+}

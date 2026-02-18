@@ -23,7 +23,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.7.5"
+const version = "0.8.0"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -99,6 +99,7 @@ func printUsage() {
 
 USAGE:
   promptctl <command> [arguments]
+  New? Run 'promptctl savings' to see your potential annual savings.
 
 PROMPT ENGINEERING:
   create "intent"     Transform raw intent into a structured prompt (alias: c)
@@ -115,6 +116,7 @@ TEMPLATE MANAGEMENT:
   vars <n>         Show variables required by a template
 
 MEMORY (saved prompts):
+  Prompts you saved from create.
   memory list       List saved prompts
   memory open       Open folder with prompts in file manager
   memory set-dir <path>  Set folder where prompts are saved
@@ -317,6 +319,10 @@ func runPrompt() error {
 
 	rendered, err := tmpl.Render(vars)
 	if err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "required variable") {
+			return fmt.Errorf("failed to render template: %w. Run 'promptctl vars %s' for required variables", err, name)
+		}
 		return fmt.Errorf("failed to render template: %w", err)
 	}
 
@@ -1195,13 +1201,16 @@ Options:
 // showSavings projects annual savings for the default model at a given calls/day.
 func showSavings() error {
 	callsPerDay := 30
+	var modelOverride string
 	for _, a := range os.Args[2:] {
 		if strings.HasPrefix(a, "--calls-per-day=") {
 			var n int
 			if _, err := fmt.Sscanf(strings.TrimPrefix(a, "--calls-per-day="), "%d", &n); err == nil && n > 0 && n <= 1000 {
 				callsPerDay = n
 			}
-			break
+		}
+		if strings.HasPrefix(a, "--model=") {
+			modelOverride = strings.TrimPrefix(a, "--model=")
 		}
 	}
 
@@ -1212,6 +1221,9 @@ func showSavings() error {
 	modelID := cfg.DefaultModel
 	if modelID == "" {
 		modelID = "claude-sonnet-4-5-20250929"
+	}
+	if modelOverride != "" {
+		modelID = modelOverride
 	}
 
 	// Representative prompt ~550 tokens (matches landing page baseline)
@@ -1228,7 +1240,11 @@ func showSavings() error {
 		modelName = model.Name
 	}
 	fmt.Println()
-	fmt.Printf("  Model: %s (default)\n", modelName)
+	if modelOverride != "" {
+		fmt.Printf("  Model: %s\n", modelName)
+	} else {
+		fmt.Printf("  Model: %s (default)\n", modelName)
+	}
 	fmt.Printf("  At %d calls/day, structured prompting saves ~$%.0f-%.0f/year\n", callsPerDay, low, high)
 	fmt.Println("  Run 'promptctl cost --compare' for per-model breakdown.")
 	fmt.Println()

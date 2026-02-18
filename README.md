@@ -139,7 +139,11 @@ When using the LLM enhancer, a **quality score (0–100)** is printed to stderr.
 When you run promptctl in a **terminal** (TTY), you get interactive prompts: select provider/model from lists, confirm dialogs, and optional rating/save after `create`. When output is **piped** or in CI, behavior is non-interactive and plain (no colors, no prompts).
 
 **Anonymous analytics (optional)**  
-The first time an event would be sent, promptctl asks: *Send anonymous usage stats to improve promptctl? (Y/n)*. Your choice is stored in `~/.promptctl/analytics.json`. Events (e.g. onboarding completion, model selected, prompt created/saved, ratings) are sent to Google Analytics 4 via the Measurement Protocol. To enable sending, set **`PROMPTCTL_GA4_SECRET`** (create an API secret in GA4 Admin → Data Streams → your stream → Measurement Protocol API secrets). Without this env var, no events are sent.
+The first time an event would be sent, promptctl asks: *Send anonymous usage stats to improve promptctl? (Y/n)*. Your choice is stored in `~/.promptctl/analytics.json`. Events (e.g. onboarding completion, model selected, prompt created/saved, ratings) are sent to Google Analytics 4 via the Measurement Protocol. To enable sending, set **`PROMPTCTL_GA4_SECRET`** in the environment where the CLI runs (create an API secret in GA4 Admin → Data Streams → your stream → Measurement Protocol API secrets). Without this env var, no events are sent.
+
+```bash
+export PROMPTCTL_GA4_SECRET=your_measurement_protocol_api_secret
+```
 
 ## Project-Level Templates
 

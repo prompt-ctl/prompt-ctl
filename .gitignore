@@ -43,3 +43,6 @@ worker-try/.wrangler/
 
 # Worktrees (isolated branches)
 .worktrees
+
+
+/docs/emulated-runs
