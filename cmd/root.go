@@ -1241,57 +1241,64 @@ func listModels() error {
 
 // interactiveModelSwitch lets the user pick a new default model
 func interactiveModelSwitch(cfg *llm.Config) error {
-	// Build flat list of all models
 	type indexedModel struct {
 		model    llm.Model
 		provider string
+		key      string
 	}
 	var allModels []indexedModel
-
 	for _, key := range llm.ProviderKeys() {
 		provider := llm.Providers[key]
 		for _, model := range provider.Models {
-			allModels = append(allModels, indexedModel{model: model, provider: provider.Name})
+			allModels = append(allModels, indexedModel{model: model, provider: provider.Name, key: key})
 		}
 	}
 
-	fmt.Print("  Select your default model:\n")
+	options := make([]string, len(allModels))
 	for i, m := range allModels {
 		marker := "  "
 		if m.model.ID == cfg.DefaultModel {
 			marker = "▸ "
 		}
-
-		// Check if provider has API key
 		keyStatus := "  ✗ no key"
-		apiKey := getAPIKeyStatus(m.model.Provider, cfg)
-		if apiKey {
+		if getAPIKeyStatus(m.model.Provider, cfg) {
 			keyStatus = "  ✓"
 		}
-
-		fmt.Printf("  %s[%d] %-12s %-22s $%.2f/MTok in  $%.2f/MTok out%s\n",
-			marker, i+1, m.provider, m.model.Name,
-			m.model.InputPerMTok, m.model.OutputPerMTok, keyStatus)
+		options[i] = fmt.Sprintf("%s%-12s %-22s $%.2f/MTok in  $%.2f/MTok out%s",
+			marker, m.provider, m.model.Name, m.model.InputPerMTok, m.model.OutputPerMTok, keyStatus)
 	}
 
-	fmt.Print("\n  Enter number (or 'q' to cancel): ")
-	var input string
-	fmt.Scanln(&input)
-
-	if input == "q" || input == "" {
-		return nil
+	var choice string
+	if ui.Interactive() {
+		if err := ui.SelectOption("  Select your default model", options, &choice); err != nil {
+			return err
+		}
+	} else {
+		fmt.Print("  Select your default model (run in a terminal for interactive selection):\n")
+		for _, o := range options {
+			fmt.Println("   ", o)
+		}
+		fmt.Print("\n  Enter number (or 'q' to cancel): ")
+		var input string
+		fmt.Scanln(&input)
+		if input == "q" || input == "" {
+			return nil
+		}
+		var idx int
+		if _, err := fmt.Sscanf(input, "%d", &idx); err != nil || idx < 1 || idx > len(allModels) {
+			return fmt.Errorf("invalid selection")
+		}
+		choice = options[idx-1]
 	}
 
-	var choice int
-	if _, err := fmt.Sscanf(input, "%d", &choice); err != nil || choice < 1 || choice > len(allModels) {
+	idx := indexOf(options, choice)
+	if idx < 0 {
 		return fmt.Errorf("invalid selection")
 	}
-
-	selected := allModels[choice-1]
+	selected := allModels[idx]
 	cfg.DefaultModel = selected.model.ID
 	cfg.DefaultProvider = selected.model.Provider
 
-	// Check if we have an API key for this provider
 	if !getAPIKeyStatus(selected.model.Provider, cfg) {
 		fmt.Printf("\n  ⚠  No API key for %s.\n", selected.provider)
 		fmt.Printf("  Run: promptctl config  (to set up your API key)\n\n")
@@ -1299,6 +1306,14 @@ func interactiveModelSwitch(cfg *llm.Config) error {
 
 	if err := llm.SaveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
+	}
+
+	consent, _ := analytics.ReadConsent()
+	if consent != nil && consent.Enabled && consent.ClientID != "" {
+		go analytics.SendEvent(consent.ClientID, "model_selected", map[string]interface{}{
+			"model_id": selected.model.ID,
+			"provider": selected.key,
+		})
 	}
 
 	fmt.Printf("\n  ✓ Default model set to: %s (%s)\n\n", selected.model.Name, selected.model.ID)
