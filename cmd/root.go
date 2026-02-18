@@ -178,6 +178,10 @@ func createPrompt() error {
 	if err != nil {
 		return fmt.Errorf("failed to enhance prompt: %w", err)
 	}
+	analytics.EnsureAnalyticsConsent()
+	if c, _ := analytics.ReadConsent(); c != nil && c.Enabled && c.ClientID != "" {
+		go analytics.SendEvent(c.ClientID, "prompt_created", nil)
+	}
 
 	// Score quality when requested or when using LLM (to tune response)
 	showScore := hasFlag("--score") || (appCfg.EnhanceMode == "llm" && appCfg.EnhanceURL != "")
@@ -200,11 +204,16 @@ func createPrompt() error {
 		rating := askUserRating()
 		if rating >= 1 {
 			persistRating(rating, len(intent), appCfg.EnhanceURL)
+			if c, _ := analytics.ReadConsent(); c != nil && c.Enabled && c.ClientID != "" {
+				go analytics.SendEvent(c.ClientID, "prompt_rated", map[string]interface{}{
+					"rating":        rating,
+					"intent_length": len(intent),
+				})
+			}
 		}
 		if rating >= 1 && rating < 3 && !freeRetryUsedToday() {
-			fmt.Fprint(os.Stderr, "\nWant to try again for free? (once per day) (y/n): ")
-			ans := readLineStdin()
-			if ans == "y" || ans == "Y" {
+			retry, err := ui.Confirm("\nWant to try again for free? (once per day)", false)
+			if err == nil && retry {
 				markFreeRetryUsed()
 				result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 				if err == nil {
@@ -215,7 +224,6 @@ func createPrompt() error {
 		}
 	}
 
-	// When interactive and no --save, offer to save to memory (skip when stdout is piped)
 	if saveName == "" && currentResult.Prompt != "" && interactive() {
 		askSaveToMemory(currentResult, appCfg)
 	}
@@ -690,22 +698,34 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
-// askUserRating prompts for a 1-5 rating on stderr. Returns rating (1-5), or 0 if skipped/invalid.
+var ratingOptions = []string{"1 - Poor", "2", "3", "4", "5 - Great", "Skip"}
+
+func ratingFromOption(s string) int {
+	for i, opt := range ratingOptions {
+		if opt == s {
+			if i == 5 {
+				return 0
+			}
+			return i + 1
+		}
+	}
+	return 0
+}
+
+// askUserRating prompts for a 1-5 rating. Returns rating (1-5), or 0 if skipped.
 func askUserRating() int {
-	fmt.Fprint(os.Stderr, "\nRate this output (1-5, Enter to skip): ")
-	var input string
-	fmt.Scanln(&input)
-	input = strings.TrimSpace(input)
-	if input == "" {
+	if !ui.Interactive() {
 		return 0
 	}
-	var n int
-	if _, err := fmt.Sscanf(input, "%d", &n); err != nil || n < 1 || n > 5 {
-		fmt.Fprintln(os.Stderr, "Skipped (use 1-5).")
+	var choice string
+	if err := ui.SelectOption("\nRate this output", ratingOptions, &choice); err != nil {
 		return 0
 	}
-	fmt.Fprintf(os.Stderr, "Thanks — %d/5.\n", n)
-	return n
+	r := ratingFromOption(choice)
+	if r >= 1 {
+		fmt.Fprintf(os.Stderr, "Thanks — %d/5.\n", r)
+	}
+	return r
 }
 
 // persistRating appends a rating to ~/.promptctl/ratings.json and optionally POSTs to enhance URL /rating.
@@ -787,19 +807,22 @@ func readLineStdin() string {
 
 // askSaveToMemory prompts interactively to save the enhanced prompt to memory (PromptsDir).
 func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
-	fmt.Fprint(os.Stderr, "\nSave to memory? (y/n): ")
-	ans := readLineStdin()
-	if ans != "y" && ans != "Y" {
+	if !ui.Interactive() {
 		return
 	}
-	fmt.Fprint(os.Stderr, "Folder name (optional, Enter to skip): ")
-	folder := strings.ReplaceAll(readLineStdin(), " ", "-")
+	save, err := ui.Confirm("\nSave to memory?", true)
+	if err != nil || !save {
+		return
+	}
+	var folder, name string
+	_ = ui.Input("Folder name (optional, Enter to skip)", &folder)
+	folder = strings.ReplaceAll(strings.TrimSpace(folder), " ", "-")
 	if folder != "" && !prompt.IsValidTemplateName(folder) {
 		fmt.Fprintln(os.Stderr, "Invalid folder name (use only letters, numbers, hyphen, underscore).")
 		return
 	}
-	fmt.Fprint(os.Stderr, "Prompt name: ")
-	name := strings.ReplaceAll(readLineStdin(), " ", "-")
+	_ = ui.Input("Prompt name", &name)
+	name = strings.ReplaceAll(strings.TrimSpace(name), " ", "-")
 	if name == "" || !prompt.IsValidTemplateName(name) {
 		fmt.Fprintln(os.Stderr, "Invalid prompt name (use only letters, numbers, hyphen, underscore).")
 		return
@@ -837,6 +860,10 @@ func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
 	if err := os.WriteFile(path, []byte(templateContent), 0644); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to save: %v\n", err)
 		return
+	}
+	consent, _ := analytics.ReadConsent()
+	if consent != nil && consent.Enabled && consent.ClientID != "" {
+		go analytics.SendEvent(consent.ClientID, "prompt_saved", nil)
 	}
 	fmt.Fprintf(os.Stderr, "Saved to %s\n", path)
 	fmt.Fprintln(os.Stderr, "Prompts are stored only on your computer, not uploaded. If you remove the app, they will be deleted.")
