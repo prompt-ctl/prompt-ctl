@@ -134,6 +134,13 @@ When using the LLM enhancer, a **quality score (0–100)** is printed to stderr.
 - Prefer interactive `promptctl config` or setting the provider’s env var (e.g. `ANTHROPIC_API_KEY`) so the key is not stored in shell history. Using `promptctl config --api-key=sk-...` on the command line can expose the key in history.
 - Paths for `--file` and `--dir` must be under the current working directory (path traversal is rejected).
 
+## Interactive TUI and analytics
+
+When you run promptctl in a **terminal** (TTY), you get interactive prompts: select provider/model from lists, confirm dialogs, and optional rating/save after `create`. When output is **piped** or in CI, behavior is non-interactive and plain (no colors, no prompts).
+
+**Anonymous analytics (optional)**  
+The first time an event would be sent, promptctl asks: *Send anonymous usage stats to improve promptctl? (Y/n)*. Your choice is stored in `~/.promptctl/analytics.json`. Events (e.g. onboarding completion, model selected, prompt created/saved, ratings) are sent to Google Analytics 4 via the Measurement Protocol. To enable sending, set **`PROMPTCTL_GA4_SECRET`** (create an API secret in GA4 Admin → Data Streams → your stream → Measurement Protocol API secrets). Without this env var, no events are sent.
+
 ## Project-Level Templates
 
 Create project-specific templates that override or extend global ones:
