@@ -647,6 +647,15 @@ func parseVars(args []string) map[string]string {
 	return vars
 }
 
+func indexOf(slice []string, s string) int {
+	for i, v := range slice {
+		if v == s {
+			return i
+		}
+	}
+	return -1
+}
+
 // hasFlag checks if a flag is present in args
 func hasFlag(flag string) bool {
 	for _, arg := range os.Args {
@@ -1345,9 +1354,11 @@ func ensureLLMConfig() (*llm.Config, error) {
 	return llm.LoadConfig()
 }
 
-// configOnboarding is the full interactive setup wizard
+// configOnboarding is the full interactive setup wizard (Survey when TTY).
 func configOnboarding() error {
-	reader := newLineReader()
+	if !ui.Interactive() {
+		return fmt.Errorf("run promptctl config in a terminal to set up")
+	}
 
 	cfg, err := llm.LoadConfig()
 	if err != nil {
@@ -1361,57 +1372,48 @@ func configOnboarding() error {
 	fmt.Println()
 
 	// ── Step 1: Select provider ──────────────────────────────────
-	fmt.Print("  Step 1/4 - Choose your LLM provider\n")
-
 	providerKeys := llm.ProviderKeys()
+	providerOptions := make([]string, len(providerKeys))
 	for i, key := range providerKeys {
-		provider := llm.Providers[key]
-		priceRange := getProviderPriceRange(provider)
-		fmt.Printf("    [%d] %-12s %s\n", i+1, provider.Name, priceRange)
+		p := llm.Providers[key]
+		providerOptions[i] = p.Name + "  " + getProviderPriceRange(p)
 	}
-
-	fmt.Printf("\n  Select provider (1-%d): ", len(providerKeys))
-	providerInput := reader.ReadLine()
-
-	var providerIdx int
-	if _, err := fmt.Sscanf(providerInput, "%d", &providerIdx); err != nil || providerIdx < 1 || providerIdx > len(providerKeys) {
+	var providerChoice string
+	if err := ui.SelectOption("  Step 1/4 - Choose your LLM provider", providerOptions, &providerChoice); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
-		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
+		return err
 	}
-
-	selectedProviderKey := providerKeys[providerIdx-1]
+	providerIdx := indexOf(providerOptions, providerChoice)
+	if providerIdx < 0 {
+		_ = onboarding.MarkOnboardingSkipped()
+		return fmt.Errorf("invalid selection")
+	}
+	selectedProviderKey := providerKeys[providerIdx]
 	selectedProvider := llm.Providers[selectedProviderKey]
-
 	fmt.Printf("\n  ✓ Provider: %s\n\n", selectedProvider.Name)
 
 	// ── Step 2: Select model ─────────────────────────────────────
-	fmt.Print("  Step 2/4 - Choose your default model\n")
-
-	for i, model := range selectedProvider.Models {
-		fmt.Printf("    [%d] %-22s  $%.2f/MTok in  $%.2f/MTok out  %sk context\n",
-			i+1, model.Name, model.InputPerMTok, model.OutputPerMTok, formatNumSimple(model.ContextWindow/1000))
+	modelOptions := make([]string, len(selectedProvider.Models))
+	for i, m := range selectedProvider.Models {
+		modelOptions[i] = fmt.Sprintf("%s  $%.2f/MTok in  $%.2f/MTok out  %sk context",
+			m.Name, m.InputPerMTok, m.OutputPerMTok, formatNumSimple(m.ContextWindow/1000))
 	}
-
-	// Suggest the best value option
 	bestValue := findBestValue(selectedProvider)
-	fmt.Printf("\n  Recommended: %s (best price/quality ratio)\n", bestValue.Name)
-
-	fmt.Printf("\n  Select model (1-%d): ", len(selectedProvider.Models))
-	modelInput := reader.ReadLine()
-
-	var modelIdx int
-	if _, err := fmt.Sscanf(modelInput, "%d", &modelIdx); err != nil || modelIdx < 1 || modelIdx > len(selectedProvider.Models) {
+	fmt.Printf("  Recommended: %s (best price/quality ratio)\n\n", bestValue.Name)
+	var modelChoice string
+	if err := ui.SelectOption("  Step 2/4 - Choose your default model", modelOptions, &modelChoice); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
-		return fmt.Errorf("invalid selection. Run 'promptctl config' to try again")
+		return err
 	}
-
-	selectedModel := selectedProvider.Models[modelIdx-1]
+	modelIdx := indexOf(modelOptions, modelChoice)
+	if modelIdx < 0 {
+		_ = onboarding.MarkOnboardingSkipped()
+		return fmt.Errorf("invalid selection")
+	}
+	selectedModel := selectedProvider.Models[modelIdx]
 	fmt.Printf("\n  ✓ Model: %s\n\n", selectedModel.Name)
 
 	// ── Step 3: API key ──────────────────────────────────────────
-	fmt.Print("  Step 3/4 - Connect your API key\n")
-
-	// Check if key already exists
 	existingKey := ""
 	if k, ok := cfg.APIKeys[selectedProviderKey]; ok && k != "" {
 		existingKey = k
@@ -1419,43 +1421,30 @@ func configOnboarding() error {
 	if existingKey == "" {
 		existingKey = os.Getenv(selectedProvider.EnvKey)
 	}
-
+	var keyInput string
 	if existingKey != "" {
-		masked := maskKey(existingKey)
-		fmt.Printf("  You already have a key configured: %s\n", masked)
-		fmt.Print("  Keep existing key? (Y/n): ")
-		keepInput := reader.ReadLine()
-
-		if keepInput == "" || strings.ToLower(keepInput) == "y" || strings.ToLower(keepInput) == "yes" {
+		keep, err := ui.Confirm("  You already have a key configured: "+maskKey(existingKey)+"\n  Keep existing key?", true)
+		if err != nil {
+			_ = onboarding.MarkOnboardingSkipped()
+			return err
+		}
+		if keep {
 			fmt.Println("\n  ✓ Keeping existing API key")
 			goto saveConfig
 		}
 	}
-
-	{
-		fmt.Printf("  To get your API key, open:\n\n")
-		fmt.Printf("    %s\n\n", selectedProvider.KeyURL)
-		fmt.Printf("  Press Enter to open in browser (or paste key directly)... ")
-
-		keyInput := reader.ReadLine()
-
-		if keyInput == "" {
-			// User pressed Enter without pasting - open browser
-			openBrowser(selectedProvider.KeyURL)
-			fmt.Println()
-			fmt.Printf("  Browser opened. Create your API key and paste it below.\n")
-			fmt.Printf("  API key (input hidden): ")
-			keyInput = reader.ReadLineHidden()
-		}
-
-		if strings.TrimSpace(keyInput) == "" {
-			_ = onboarding.MarkOnboardingSkipped()
-			return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
-		}
-
-		cfg.APIKeys[selectedProviderKey] = strings.TrimSpace(keyInput)
-		fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
+	fmt.Printf("  To get your API key, open: %s\n\n", selectedProvider.KeyURL)
+	openBrowser(selectedProvider.KeyURL)
+	if err := ui.Input("  API key (paste and press Enter)", &keyInput); err != nil {
+		_ = onboarding.MarkOnboardingSkipped()
+		return err
 	}
+	if strings.TrimSpace(keyInput) == "" {
+		_ = onboarding.MarkOnboardingSkipped()
+		return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
+	}
+	cfg.APIKeys[selectedProviderKey] = strings.TrimSpace(keyInput)
+	fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
 
 saveConfig:
 	cfg.DefaultProvider = selectedProviderKey
