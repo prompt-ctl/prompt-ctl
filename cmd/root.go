@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.10"
+const version = "0.8.11"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
