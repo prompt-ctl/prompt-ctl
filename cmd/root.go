@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,10 +28,26 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.6"
+const version = "0.8.7"
+
+const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
+const versionCheckInterval = 24 * time.Hour
 
 // Execute is the main entry point for the CLI
 func Execute() error {
+	var upgradeMsg string
+	defer func() {
+		if upgradeMsg != "" {
+			fmt.Fprintln(os.Stderr, ui.Hint(upgradeMsg))
+		}
+	}()
+
+	// First-time setup: run onboarding once (init + LLM config + aliases) then continue.
+	if interactive() && !onboarding.FirstRunDone() {
+		runFirstTimeOnboarding()
+		_ = onboarding.MarkFirstRunDone()
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
 		maybeShowAliasTip()
@@ -38,6 +55,10 @@ func Execute() error {
 	}
 
 	command := os.Args[1]
+	if command != "version" && command != "-v" && command != "--version" && stderrIsTerminal() && shouldCheckVersion() {
+		upgradeMsg = checkUpgrade(3 * time.Second)
+		markLastVersionCheck()
+	}
 
 	switch command {
 	case "create", "c":
@@ -775,6 +796,74 @@ func maybeOfferShellAliases() {
 	fmt.Fprintln(os.Stderr, ui.Hint("Reload your shell: source "+profile))
 }
 
+// runFirstTimeOnboarding runs the full first-time setup: welcome, init, default format, LLM config, shell aliases. Called once when user runs promptctl for the first time (interactive).
+func runFirstTimeOnboarding() {
+	fmt.Println()
+	fmt.Println("  ┌─────────────────────────────────────────────────────────┐")
+	fmt.Println("  │           Welcome to promptctl                            │")
+	fmt.Println("  │   Turn raw ideas into structured prompts. Save 55–71%     │")
+	fmt.Println("  │   on LLM costs. Works with Claude, GPT-5, Groq, DeepSeek. │")
+	fmt.Println("  └─────────────────────────────────────────────────────────┘")
+	fmt.Println()
+	fmt.Println("  You'll go through 4 steps:")
+	fmt.Println("    1) Create config and starter templates (~/.promptctl)")
+	fmt.Println("    2) Choose default output format for 'promptctl create'")
+	fmt.Println("    3) Set up your LLM (provider + API key)")
+	fmt.Println("    4) Optionally add shell aliases (prompt, p)")
+	fmt.Println()
+	fmt.Println("  Let's get you set up.")
+	fmt.Println()
+
+	// Step 1: Init (create ~/.promptctl, starter templates)
+	if err := config.InitGlobal(); err != nil {
+		fmt.Fprintf(os.Stderr, "  Warning: init failed: %v\n", err)
+	} else {
+		fmt.Fprintln(os.Stderr, ui.Success("  ✓ Step 1/4 — Config and starter templates ready."))
+		fmt.Println()
+	}
+
+	// Step 2: Default output format for 'create' (so we don't ask every time)
+	fmt.Println("  Step 2/4 — Choose default output format for 'promptctl create' (you won't be asked again).")
+	var formatChoice string
+	formatOptions := []string{"Markdown (recommended)", "XML", "YAML", "JSON", "Plain text"}
+	if err := ui.SelectOption("  Output format", formatOptions, &formatChoice); err == nil {
+		format := "markdown"
+		switch formatChoice {
+		case "Markdown (recommended)", "YAML", "JSON", "Plain text":
+			format = "markdown"
+		case "XML":
+			format = "xml"
+		}
+		_ = config.SaveCreateFormat(format)
+		fmt.Fprintln(os.Stderr, ui.Success("  ✓ Step 2/4 — Default format saved (change later with --format=...)."))
+	} else {
+		_ = config.SaveCreateFormat("markdown")
+	}
+	fmt.Println()
+
+	// Step 3: LLM provider and API key
+	fmt.Println("  Step 3/4 — Choose your LLM provider and add your API key.")
+	if err := configOnboarding(); err != nil {
+		fmt.Fprintf(os.Stderr, "  You can run 'promptctl config' later to set up your LLM.\n\n")
+	} else {
+		fmt.Fprintln(os.Stderr, ui.Success("  ✓ Step 3/4 — LLM configured."))
+		fmt.Println()
+	}
+
+	// Step 4: Shell aliases (prompt, p)
+	fmt.Println("  Step 4/4 — Add short commands so you don't have to type 'promptctl' every time.")
+	maybeOfferShellAliases()
+	fmt.Println()
+
+	fmt.Println("  ┌─────────────────────────────────────────────────────────┐")
+	fmt.Println("  │  You're all set. Try:                                    │")
+	fmt.Println("  │    promptctl create \"analyze my startup idea\"            │")
+	fmt.Println("  │    promptctl list                                         │")
+	fmt.Println("  │  Or use 'prompt' / 'p' if you added aliases.              │")
+	fmt.Println("  └─────────────────────────────────────────────────────────┘")
+	fmt.Println()
+}
+
 const aliasTipShownFile = "alias_tip_shown"
 
 // maybeShowAliasTip prints a one-time hint about prompt/p aliases if the user hasn't added them yet.
@@ -799,6 +888,89 @@ func maybeShowAliasTip() {
 	dir := filepath.Join(home, ".promptctl")
 	_ = os.MkdirAll(dir, 0755)
 	_ = os.WriteFile(shownPath, []byte(""), 0644)
+}
+
+// shouldCheckVersion returns true if we haven't checked for a new version in the last versionCheckInterval.
+func shouldCheckVersion() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	path := filepath.Join(home, ".promptctl", "last_version_check")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return true
+	}
+	ts, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
+	if err != nil {
+		return true
+	}
+	return time.Since(ts) >= versionCheckInterval
+}
+
+func markLastVersionCheck() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	_ = os.WriteFile(filepath.Join(dir, "last_version_check"), []byte(time.Now().UTC().Format(time.RFC3339)), 0644)
+}
+
+// checkUpgrade fetches the latest release from GitHub and returns an upgrade hint if newer than current version. Timeout applies to the HTTP request.
+func checkUpgrade(timeout time.Duration) string {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubReleasesLatest, nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	var v struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return ""
+	}
+	latest := strings.TrimPrefix(strings.TrimSpace(v.TagName), "v")
+	if latest == "" {
+		return ""
+	}
+	if !versionLess(version, latest) {
+		return ""
+	}
+	return "A new version (v" + latest + ") is available. Upgrade: brew upgrade --cask oleg-koval/tap/promptctl (or download from GitHub Releases)."
+}
+
+// versionLess returns true if a is strictly less than b (e.g. "0.8.6" < "0.9.0"). Non-numeric parts are compared as strings.
+func versionLess(a, b string) bool {
+	partsA := strings.Split(a, ".")
+	partsB := strings.Split(b, ".")
+	for i := 0; i < len(partsA) || i < len(partsB); i++ {
+		var na, nb int
+		if i < len(partsA) {
+			na, _ = strconv.Atoi(partsA[i])
+		}
+		if i < len(partsB) {
+			nb, _ = strconv.Atoi(partsB[i])
+		}
+		if na < nb {
+			return true
+		}
+		if na > nb {
+			return false
+		}
+	}
+	return false
 }
 
 // parseVars extracts --key=value pairs from args
@@ -866,25 +1038,35 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
-// runSpinner runs a terminal spinner on stderr until done is closed. Message is shown before the spinner char.
-func runSpinner(done <-chan struct{}, message string) {
+// analyzeSpinnerMessages are rotating funny lines shown while the prompt is being enhanced.
+var analyzeSpinnerMessages = []string{
+	"Analyzing prompt...",
+	"Consulting the prompt oracle...",
+	"Polishing your words...",
+	"Adding structure (and savings)...",
+	"Turning intent into gold...",
+	"Almost there...",
+	"One sec, optimizing tokens...",
+	"Making it 67% better...",
+}
+
+// runSpinner runs a funny rotating message on stderr until done is closed.
+func runSpinner(done <-chan struct{}, _ string) {
 	if !stderrIsTerminal() {
 		return
 	}
-	frames := []rune{'|', '/', '-', '\\'}
-	tick := time.NewTicker(120 * time.Millisecond)
+	tick := time.NewTicker(380 * time.Millisecond)
 	defer tick.Stop()
 	var i int
 	for {
 		select {
 		case <-done:
-			// Clear the line: \r + spaces + \r (or ANSI clear to EOL)
 			fmt.Fprintf(os.Stderr, "\r\033[K")
 			return
 		case <-tick.C:
-			c := frames[i%len(frames)]
+			msg := analyzeSpinnerMessages[i%len(analyzeSpinnerMessages)]
 			i++
-			fmt.Fprintf(os.Stderr, "\r%s %c ", message, c)
+			fmt.Fprintf(os.Stderr, "\r  %s   ", msg)
 		}
 	}
 }

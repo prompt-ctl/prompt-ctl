@@ -6,6 +6,7 @@ import (
 )
 
 const skippedFilename = "onboarding_skipped"
+const firstRunDoneFilename = "first_run_done"
 
 func baseDir() string {
 	if d := os.Getenv("PROMPTCTL_ONBOARDING_DIR"); d != "" {
@@ -46,4 +47,19 @@ func ClearOnboardingSkipped() error {
 // ReminderMessage returns the one-line reminder to run promptctl config.
 func ReminderMessage() string {
 	return "Run `promptctl config` to set up your LLM."
+}
+
+// FirstRunDone returns true if the user has already completed the first-time onboarding.
+func FirstRunDone() bool {
+	_, err := os.Stat(filepath.Join(baseDir(), firstRunDoneFilename))
+	return err == nil
+}
+
+// MarkFirstRunDone records that first-time onboarding was shown (completed or skipped).
+func MarkFirstRunDone() error {
+	dir := baseDir()
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, firstRunDoneFilename), []byte("true"), 0644)
 }
