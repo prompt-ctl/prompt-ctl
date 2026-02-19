@@ -4,6 +4,15 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+- **First-time onboarding:** On first run (interactive), show welcome wizard: 4 steps (init, default output format, LLM config, shell aliases). Overview of steps before starting; welcome box with aligned formatting. Mark completed with `~/.promptctl/first_run_done`.
+- **Default output format:** Onboarding and create flow ask for output format (Markdown, XML, YAML, JSON, Plain text). "Remember my choice?" saves to `~/.promptctl/create_format`; next create uses it without asking. Hint: "To change later: promptctl create --format=... \"...\"."
+- **Shell aliases:** `promptctl init` offers to add aliases (e.g. `prompt`, `p`) to `~/.zshrc`/`~/.bashrc`. If names are taken, ask for alternatives; if aliases already set, ask "Skip alias setup?" (default Yes). One-time tip after create or in usage when no aliases.
+- **Usage and tips:** Usage text mentions init and aliases. One-time alias tip shown when running `promptctl` or `promptctl help` (and after create) if user hasn't added aliases.
+- **Quality score:** Framed box (Unicode border) with bold score and hints; hints wrap to multiple lines (no truncation). Score shown on first run and on every retry.
+- **Rating:** Horizontal prompt: "Rate this output: 1  2  3  4  5  [s]kip" then type 1–5 or s. Parser accepts "51" (default+typed) as 1; case-insensitive labels. Retry offered when rating 1–3.
+- **Prompt name suggestion:** When saving to memory, suggest a name from intent (slug); if duplicate, append timestamp. User can accept (Enter) or type their own.
+- **Analyze spinner:** Rotating funny messages while enhancing ("Consulting the prompt oracle...", "Polishing your words...", etc.) instead of a single spinner character.
+- **Version check:** Once per 24h (when stderr is TTY), fetch latest release from GitHub; if newer, print hint at end of run: "Upgrade: brew upgrade --cask ...". Skip for `promptctl version`.
 - **Scoring and retry:** If user rates output 1–3, offer retry (no daily limit); loop until 4/5, Skip, or 15 tries. Score is always saved to ratings and analytics.
 - **Prompt display:** Colored section headers (markdown `#`/`##`/`###` and XML tags) in terminal; normalized newlines between sections and trailing newline.
 - **Save to memory:** List existing folders when saving; after save, offer to open the folder in Finder (or system file manager).
