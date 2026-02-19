@@ -78,6 +78,14 @@ type Config struct {
 	APIKeys         map[string]string `json:"api_keys"`
 }
 
+// CompleteOptions holds optional parameters for LLM completion (e.g. Gemini 3.1).
+// ThinkingLevel: "low" or "high". MediaResolution: "low", "medium", or "high".
+// Only used when the model supports them (e.g. gemini-3.1-pro).
+type CompleteOptions struct {
+	ThinkingLevel   string // Gemini: low | high
+	MediaResolution string // Gemini: low | medium | high
+}
+
 // MaxLLMResponseBytes is the maximum response body size for LLM API calls (memory safety).
 const MaxLLMResponseBytes = 8 * 1024 * 1024 // 8 MB
 
@@ -132,6 +140,16 @@ var Providers = map[string]Provider{
 		Models: []Model{
 			{ID: "deepseek-chat", Name: "DeepSeek Chat (V3.2)", InputPerMTok: 0.28, OutputPerMTok: 0.42, ContextWindow: 64000, Provider: "deepseek"},
 			{ID: "deepseek-reasoner", Name: "DeepSeek R1", InputPerMTok: 0.55, OutputPerMTok: 2.19, ContextWindow: 64000, Provider: "deepseek"},
+		},
+	},
+	"google": {
+		Name:    "Google",
+		BaseURL: "https://generativelanguage.googleapis.com/v1beta",
+		EnvKey:  "GOOGLE_API_KEY",
+		KeyURL:  "https://aistudio.google.com/apikey",
+		Order:   5,
+		Models: []Model{
+			{ID: "gemini-3.1-pro", Name: "Gemini 3.1 Pro", InputPerMTok: 1.25, OutputPerMTok: 5.0, ContextWindow: 2000000, Provider: "google"},
 		},
 	},
 	// Atlas is the codename for promptctl's deployed LLM (no third-party API key required when using hosted endpoint).
@@ -291,8 +309,13 @@ func AnnualSavingsProjection(savingsPerCall float64, callsPerDay int) (low, high
 // LLM execution
 // -----------------------------------------------------------------------
 
-// Complete sends a prompt to an LLM and returns the response
+// Complete sends a prompt to an LLM and returns the response.
 func Complete(prompt string, modelID string) (*CompletionResult, error) {
+	return CompleteWithOptions(prompt, modelID, nil)
+}
+
+// CompleteWithOptions sends a prompt to an LLM with optional params (e.g. Gemini thinking_level, media_resolution).
+func CompleteWithOptions(prompt string, modelID string, opts *CompleteOptions) (*CompletionResult, error) {
 	model, err := FindModel(modelID)
 	if err != nil {
 		return nil, err
@@ -327,6 +350,8 @@ func Complete(prompt string, modelID string) (*CompletionResult, error) {
 		result, err = callAnthropic(baseURL, apiKey, *model, prompt)
 	case "promptctl":
 		result, err = callOpenAICompatible(baseURL, apiKey, *model, prompt)
+	case "google":
+		result, err = callGemini(baseURL, apiKey, *model, prompt, opts)
 	default:
 		// OpenAI-compatible API (works for OpenAI, Groq, DeepSeek)
 		result, err = callOpenAICompatible(baseURL, apiKey, *model, prompt)
@@ -486,6 +511,112 @@ func callOpenAICompatible(baseURL, apiKey string, model Model, prompt string) (*
 	}, nil
 }
 
+// callGemini makes a request to the Google Gemini API (generateContent).
+// opts can supply thinking_level (low/high) and media_resolution (low/medium/high) for Gemini 3.1.
+func callGemini(baseURL, apiKey string, model Model, prompt string, opts *CompleteOptions) (*CompletionResult, error) {
+	url := strings.TrimSuffix(baseURL, "/") + "/models/" + model.ID + ":generateContent?key=" + apiKey
+
+	contents := []map[string]interface{}{
+		{"role": "user", "parts": []map[string]string{{"text": prompt}}},
+	}
+	genConfig := map[string]interface{}{
+		"maxOutputTokens": 4096,
+	}
+	if opts != nil {
+		if opts.ThinkingLevel != "" {
+			level := strings.ToLower(opts.ThinkingLevel)
+			if level == "low" || level == "high" {
+				genConfig["thinkingConfig"] = map[string]string{"thinkingLevel": level}
+			}
+		}
+		if opts.MediaResolution != "" {
+			res := strings.ToLower(opts.MediaResolution)
+			if res == "low" || res == "medium" || res == "high" {
+				genConfig["mediaResolution"] = res
+			}
+		}
+	}
+	body := map[string]interface{}{
+		"contents":         contents,
+		"generationConfig": genConfig,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, MaxLLMResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("API error (HTTP %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+		UsageMetadata *struct {
+			PromptTokenCount     int `json:"promptTokenCount"`
+			CandidatesTokenCount int `json:"candidatesTokenCount"`
+			TotalTokenCount      int `json:"totalTokenCount"`
+			// PDF tokens may be under IMAGE modality in usage_metadata (Gemini 3.1)
+			TokenCountByModality map[string]int `json:"tokenCountByModality"`
+		} `json:"usageMetadata"`
+	}
+
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	text := ""
+	if len(result.Candidates) > 0 && len(result.Candidates[0].Content.Parts) > 0 {
+		text = result.Candidates[0].Content.Parts[0].Text
+	}
+
+	inputTokens := 0
+	outputTokens := 0
+	if result.UsageMetadata != nil {
+		inputTokens = result.UsageMetadata.PromptTokenCount
+		outputTokens = result.UsageMetadata.CandidatesTokenCount
+		if result.UsageMetadata.TotalTokenCount > 0 && inputTokens == 0 && outputTokens == 0 {
+			inputTokens = result.UsageMetadata.TotalTokenCount / 2
+			outputTokens = result.UsageMetadata.TotalTokenCount - inputTokens
+		}
+		// Gemini 3.1: PDF tokens are under IMAGE in tokenCountByModality; promptTokenCount already includes them
+	}
+
+	inputCost := float64(inputTokens) / 1_000_000 * model.InputPerMTok
+	outputCost := float64(outputTokens) / 1_000_000 * model.OutputPerMTok
+
+	return &CompletionResult{
+		Content:      text,
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+		ActualCost:   inputCost + outputCost,
+	}, nil
+}
+
 // -----------------------------------------------------------------------
 // Configuration management
 // -----------------------------------------------------------------------
@@ -579,7 +710,7 @@ func SetAPIKey(provider, key string) error {
 
 // ProviderKeys returns provider keys in display order
 func ProviderKeys() []string {
-	return []string{"promptctl", "anthropic", "openai", "groq", "deepseek"}
+	return []string{"promptctl", "anthropic", "openai", "groq", "deepseek", "google"}
 }
 
 // FindModel searches all providers for a model by ID or name

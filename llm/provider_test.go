@@ -144,8 +144,8 @@ func TestAnnualSavingsProjection(t *testing.T) {
 
 func TestProviderKeys(t *testing.T) {
 	keys := ProviderKeys()
-	if len(keys) != 5 {
-		t.Errorf("len(ProviderKeys) = %d, want 5", len(keys))
+	if len(keys) != 6 {
+		t.Errorf("len(ProviderKeys) = %d, want 6", len(keys))
 	}
 	if keys[0] != "promptctl" {
 		t.Errorf("first provider key = %q, want promptctl", keys[0])

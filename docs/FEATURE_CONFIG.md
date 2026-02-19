@@ -38,10 +38,36 @@ Stored in `~/.promptctl/llm.json`. Edited via `promptctl config` (interactive or
 | **Default model** | `promptctl config` or `llm.json` `default_model` | e.g. `claude-sonnet-4-5-20250929` |
 | **API keys** | `promptctl config --provider=... --api-key=...` or env (e.g. `ANTHROPIC_API_KEY`) or macOS Keychain | Per-provider key; Keychain used on darwin when set via config flow |
 
+## Score and fix config
+
+`promptctl score` and `promptctl fix` read optional config from `.promptctl/score.yaml` (looked up from the current directory upward). If the file is missing, defaults are used.
+
+| Option | Key in `score.yaml` | Default | Purpose |
+|--------|---------------------|---------|---------|
+| **Dirs** | `dirs` | (current dir when no positional args) | Directories to scan for prompt files |
+| **Include** | `include` | `["*.txt", "*.md"]` | Glob patterns for files to include |
+| **Ignore** | `ignore` | (none) | Glob patterns for files to skip |
+| **Min score** | `min_score` | `80` | Minimum score (0–100) for pass / fix threshold |
+| **Rules** | `rules` | (all) | Optional list of rule IDs to enable (empty = all) |
+
+Example `.promptctl/score.yaml`:
+
+```yaml
+dirs: [prompts/, docs/prompts]
+include: ["*.txt", "*.md"]
+ignore: ["draft-*"]
+min_score: 80
+rules: []   # optional; empty = all rules
+```
+
+CLI flags override the config file: e.g. `--min-score=70` overrides `min_score`, and positional paths override `dirs`.
+
 ## CLI flags that override config
 
 - `promptctl create --format=markdown|xml|yaml|json|text` → overrides default create format for that run
 - `promptctl send ... --model=MODEL` → overrides default model for that run
+- `promptctl score [dirs] --min-score=N --format=json` → score prompt files; exit 0 if all ≥ N, 1 if below or no files, 2 on error; JSON has `files`, `min_score`, `ok`
+- `promptctl fix [dirs] --dry-run --suggest` → fix low-scoring prompts; `--dry-run` previews changes, `--suggest` prints suggestions only
 - Env `PROMPTCTL_PROMPTS_DIR` → overrides prompts dir
 - Env `PROMPTCTL_ENHANCE`, `PROMPTCTL_ENHANCE_URL` → override enhance behavior
 

@@ -77,16 +77,18 @@ When you pass `--dir=path/to/dir`:
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `run <name> [--var=val]` | Render a template (alias: `r`) |
-| `list` | List all templates (alias: `ls`) |
-| `add <name>` | Scaffold a new template |
-| `edit <name>` | Open in `$EDITOR` |
-| `show <name>` | Display template content and metadata |
-| `copy <name> [--var=val]` | Copy rendered prompt to clipboard (alias: `cp`) |
-| `vars <name>` | Show required/optional variables |
-| `init` | Set up global config with starter templates |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `run <name> [--var=val]` | Render a template (alias: `r`) | — |
+| `list` | List all templates (alias: `ls`) | — |
+| `add <name>` | Scaffold a new template | — |
+| `edit <name>` | Open in `$EDITOR` | — |
+| `show <name>` | Display template content and metadata | — |
+| `copy <name> [--var=val]` | Copy rendered prompt to clipboard (alias: `cp`) | — |
+| `vars <name>` | Show required/optional variables | — |
+| `init` | Set up global config with starter templates | — |
+| `score [dirs]` | Score prompt files (0–100) by structure, clarity, constraints, persona; CI-friendly exit codes and `--format=json` | `promptctl score prompts/` |
+| `fix [dirs]` | Apply fixes to low-scoring prompt files (use `--dry-run` to preview) | `promptctl fix --dry-run prompts/` |
 
 Shorthand: `promptctl review --file=x.ts` is the same as `promptctl run review --file=x.ts`.
 
@@ -128,6 +130,8 @@ To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.
 
 **Quality score and tuning**
 When using the LLM enhancer, a **quality score (0–100)** is printed to stderr. It measures fidelity (your specific terms preserved in the output), absence of duplicate sections, and required structure. Use `promptctl create "intent" --score` to show the score for rule-based enhance too. If the score is low or the output is too generic, try: (1) `PROMPTCTL_ENHANCE=rule` for long or detailed intents (no LLM), or (2) shorten the intent and add specifics in a follow-up.
+
+**`promptctl score` (CI)** — Score prompt files in given dirs (default: current dir). Exit codes: **0** = all files ≥ threshold; **1** = at least one below threshold or no files found; **2** = usage/config error. Use `--min-score=N` (default 80) and `--format=json` for machine-readable output (`files`, `min_score`, `ok`).
 
 **Security & configuration**
 - Do not commit API keys or webhook URLs; use environment variables or Cloudflare secrets.

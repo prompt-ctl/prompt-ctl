@@ -15,3 +15,8 @@
 | [SIMULATED_USER_TESTING_REPORT](SIMULATED_USER_TESTING_REPORT.md) | Simulated user testing report |
 | [TWEETS_SHIP_IT](TWEETS_SHIP_IT.md) | Tweets ship it |
 | [TWEETS_0.7.1](TWEETS_0.7.1.md) | Tweets 0.7.1 |
+| [chatgpt-ideas](chatgpt-ideas.md) | 1. “Cost savings depend on usage patterns” |
+| [plans/2025-02-19-prompt-score-fix-design](plans/2025-02-19-prompt-score-fix-design.md) | Prompt scoring and fix — Design |
+| [plans/2025-02-19-prompt-score-fix](plans/2025-02-19-prompt-score-fix.md) | Prompt score and fix Implementation Plan |
+| [TWEETS_GEMINI_3.1](TWEETS_GEMINI_3.1.md) | Tweets — Gemini 3.1 Pro support |
+| [plans/2026-02-19-gemini-3.1-prep](plans/2026-02-19-gemini-3.1-prep.md) | Gemini 3.1 Pro — Prep and implementation checklist |

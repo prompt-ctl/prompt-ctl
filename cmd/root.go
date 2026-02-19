@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.12"
+const version = "0.9.1"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -118,6 +118,10 @@ func Execute() error {
 		default:
 			return fmt.Errorf("usage: promptctl memory list | open | set-dir <path>")
 		}
+	case "score":
+		return runScore()
+	case "fix":
+		return runFix()
 	case "version", "-v", "--version":
 		fmt.Printf("promptctl v%s\n", version)
 		return nil
@@ -1636,9 +1640,11 @@ func sendPrompt() error {
   promptctl send <template-name> [--var=value ...] [--model=MODEL]
   promptctl send --create "your intent here" [--model=MODEL]
 
+Options (Gemini 3.1): --thinking-level=low|high, --media-resolution=low|medium|high
+
 Examples:
   promptctl send review --file=auth.ts --model=claude-sonnet-4.5
-  promptctl send --create "analyze my startup idea about X" --model=gpt-5`)
+  promptctl send --create "analyze my startup idea about X" --model=gemini-3.1-pro --thinking-level=high`)
 	}
 
 	vars := parseVars(os.Args[2:])
@@ -1656,6 +1662,14 @@ Examples:
 		}
 	}
 	delete(vars, "model")
+	thinkingLevel := vars["thinking-level"]
+	mediaResolution := vars["media-resolution"]
+	delete(vars, "thinking-level")
+	delete(vars, "media-resolution")
+	var completeOpts *llm.CompleteOptions
+	if thinkingLevel != "" || mediaResolution != "" {
+		completeOpts = &llm.CompleteOptions{ThinkingLevel: thinkingLevel, MediaResolution: mediaResolution}
+	}
 
 	var renderedPrompt string
 	var promptType string
@@ -1730,7 +1744,7 @@ Examples:
 	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f vs unstructured)\n\n", est.TotalEstCost, est.Savings)
 
 	// Execute the LLM call
-	result, err := llm.Complete(renderedPrompt, modelID)
+	result, err := llm.CompleteWithOptions(renderedPrompt, modelID, completeOpts)
 	if err != nil {
 		return fmt.Errorf("LLM call failed: %w", err)
 	}
@@ -2176,49 +2190,53 @@ func configOnboarding() error {
 	selectedModel := selectedProvider.Models[modelIdx]
 	fmt.Fprintf(os.Stderr, "\n  %s\n\n", ui.Success("✓ Model: "+selectedModel.Name))
 
-	// ── Step 3: API key ──────────────────────────────────────────
-	existingKey := llm.GetAPIKey(selectedProviderKey, selectedProvider.EnvKey)
-	var keyInput string
-	if existingKey != "" {
-		keep, err := ui.Confirm("  You already have a key configured: "+maskKey(existingKey)+"\n  Keep existing key?", true)
-		if err != nil {
+	// ── Step 3: API key (skip for Atlas / promptctl — no key needed) ──
+	if selectedProviderKey == "promptctl" {
+		fmt.Println("\n  ✓ Atlas (hosted) — no API key needed")
+	} else {
+		var keyInput string
+		existingKey := llm.GetAPIKey(selectedProviderKey, selectedProvider.EnvKey)
+		if existingKey != "" {
+			keep, err := ui.Confirm("  You already have a key configured: "+maskKey(existingKey)+"\n  Keep existing key?", true)
+			if err != nil {
+				_ = onboarding.MarkOnboardingSkipped()
+				return err
+			}
+			if keep {
+				fmt.Println("\n  ✓ Keeping existing API key")
+				goto saveConfig
+			}
+		}
+		fmt.Printf("  To get your API key, open: %s\n\n", selectedProvider.KeyURL)
+		fmt.Fprint(os.Stderr, "  Press Enter to open the API key page in your browser... ")
+		_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+		openBrowser(selectedProvider.KeyURL)
+		if err := ui.Input("  Paste your API key and press Enter to save", &keyInput); err != nil {
 			_ = onboarding.MarkOnboardingSkipped()
+			if consent != nil && consent.Enabled && consent.ClientID != "" {
+				go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+			}
 			return err
 		}
-		if keep {
-			fmt.Println("\n  ✓ Keeping existing API key")
-			goto saveConfig
+		if strings.TrimSpace(keyInput) == "" {
+			_ = onboarding.MarkOnboardingSkipped()
+			if consent != nil && consent.Enabled && consent.ClientID != "" {
+				go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+			}
+			return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
 		}
-	}
-	fmt.Printf("  To get your API key, open: %s\n\n", selectedProvider.KeyURL)
-	fmt.Fprint(os.Stderr, "  Press Enter to open the API key page in your browser... ")
-	_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
-	openBrowser(selectedProvider.KeyURL)
-	if err := ui.Input("  Paste your API key and press Enter to save", &keyInput); err != nil {
-		_ = onboarding.MarkOnboardingSkipped()
-		if consent != nil && consent.Enabled && consent.ClientID != "" {
-			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		if err := llm.SetAPIKey(selectedProviderKey, strings.TrimSpace(keyInput)); err != nil {
+			_ = onboarding.MarkOnboardingSkipped()
+			if consent != nil && consent.Enabled && consent.ClientID != "" {
+				go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+			}
+			return fmt.Errorf("saving API key: %w", err)
 		}
-		return err
-	}
-	if strings.TrimSpace(keyInput) == "" {
-		_ = onboarding.MarkOnboardingSkipped()
-		if consent != nil && consent.Enabled && consent.ClientID != "" {
-			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		if runtime.GOOS == "darwin" {
+			fmt.Printf("\n  ✓ API key saved to Keychain\n")
+		} else {
+			fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
 		}
-		return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
-	}
-	if err := llm.SetAPIKey(selectedProviderKey, strings.TrimSpace(keyInput)); err != nil {
-		_ = onboarding.MarkOnboardingSkipped()
-		if consent != nil && consent.Enabled && consent.ClientID != "" {
-			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
-		}
-		return fmt.Errorf("saving API key: %w", err)
-	}
-	if runtime.GOOS == "darwin" {
-		fmt.Printf("\n  ✓ API key saved to Keychain\n")
-	} else {
-		fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
 	}
 
 saveConfig:

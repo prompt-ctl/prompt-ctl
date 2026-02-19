@@ -4,6 +4,10 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+## [0.9.0] – 2026-02-19
+
+- **Gemini 3.1 Pro:** Google provider with model `gemini-3.1-pro`. `promptctl send` supports `--thinking-level=low|high` and `--media-resolution=low|medium|high` for Gemini; usage tracking uses `usageMetadata` (PDF tokens under IMAGE modality). Set `GOOGLE_API_KEY` or `promptctl config --provider=google --api-key=...`.
+- **Score and fix:** New commands `promptctl score` and `promptctl fix` for prompt quality. `score` rates prompt files (0–100) by structure, clarity, constraints, and persona; CI-friendly exit codes and `--format=json`. `fix` applies fixes to low-scoring files. Optional config file `.promptctl/score.yaml` (dirs, include, ignore, min_score, rules). Flags override config: `--min-score`, `--format=json`, `--dry-run`, `--suggest`.
 - **First-time onboarding:** On first run (interactive), show welcome wizard: 4 steps (init, default output format, LLM config, shell aliases). Overview of steps before starting; welcome box with aligned formatting. Mark completed with `~/.promptctl/first_run_done`.
 - **Default output format:** Onboarding and create flow ask for output format (Markdown, XML, YAML, JSON, Plain text). "Remember my choice?" saves to `~/.promptctl/create_format`; next create uses it without asking. Hint: "To change later: promptctl create --format=... \"...\"."
 - **Shell aliases:** `promptctl init` offers to add aliases (e.g. `prompt`, `p`) to `~/.zshrc`/`~/.bashrc`. If names are taken, ask for alternatives; if aliases already set, ask "Skip alias setup?" (default Yes). One-time tip after create or in usage when no aliases.
@@ -17,6 +21,7 @@ All notable changes to promptctl are documented here.
 - **Prompt display:** Colored section headers (markdown `#`/`##`/`###` and XML tags) in terminal; normalized newlines between sections and trailing newline.
 - **Save to memory:** List existing folders when saving; after save, offer to open the folder in Finder (or system file manager).
 - **Feedback session:** From time to time (every 10th create or every 7 days), prompt for anonymous freeform feedback; submit to enhance `/feedback` or append to `~/.promptctl/feedback.log`. Worker adds `POST /feedback` (no auth).
+- **Atlas (hosted):** Config/onboarding skip API key step when Atlas is selected; no browser prompt or key paste.
 
 ## [0.8.0] – 2026-02-18
 
