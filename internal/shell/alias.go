@@ -23,6 +23,18 @@ func ProfilePath() (string, error) {
 	return filepath.Join(home, ".bashrc"), nil
 }
 
+// HasPromptctlAliasBlock reports whether the profile already contains the promptctl alias block.
+func HasPromptctlAliasBlock(profilePath string) (bool, error) {
+	b, err := os.ReadFile(profilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return strings.Contains(string(b), promptctlBlockStart), nil
+}
+
 // AliasExists reports whether the profile file already defines an alias with the given name.
 func AliasExists(profilePath, aliasName string) (bool, error) {
 	b, err := os.ReadFile(profilePath)

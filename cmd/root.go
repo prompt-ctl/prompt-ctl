@@ -27,7 +27,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.4"
+const version = "0.8.5"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -270,6 +270,7 @@ func createPrompt() error {
 	if interactive() {
 		incrementCreateRunCount()
 		maybeAskFeedback(appCfg)
+		maybeShowAliasTip()
 	}
 
 	// If --save was specified, write as a reusable template
@@ -754,6 +755,32 @@ func maybeOfferShellAliases() {
 	fmt.Fprintln(os.Stderr, ui.Hint("Reload your shell: source "+profile))
 }
 
+const aliasTipShownFile = "alias_tip_shown"
+
+// maybeShowAliasTip prints a one-time hint about prompt/p aliases if the user hasn't added them yet.
+func maybeShowAliasTip() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	shownPath := filepath.Join(home, ".promptctl", aliasTipShownFile)
+	if _, err := os.Stat(shownPath); err == nil {
+		return
+	}
+	profile, err := shell.ProfilePath()
+	if err != nil {
+		return
+	}
+	hasBlock, err := shell.HasPromptctlAliasBlock(profile)
+	if err != nil || hasBlock {
+		return
+	}
+	fmt.Fprintln(os.Stderr, ui.Hint("Tip: run 'promptctl init' to add aliases (prompt, p) so you can use: prompt create \"...\" or p list"))
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	_ = os.WriteFile(shownPath, []byte(""), 0644)
+}
+
 // parseVars extracts --key=value pairs from args
 func parseVars(args []string) map[string]string {
 	vars := make(map[string]string)
@@ -810,9 +837,10 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
-// printQualityScoreBox writes a framed quality score and hints to stderr (bold, visible).
+// printQualityScoreBox writes a framed quality score and hints to stderr (bold, visible). Hints wrap to multiple lines so full text is shown.
 func printQualityScoreBox(score int, hints []string) {
 	const boxWidth = 56
+	innerWidth := boxWidth - 4 // "│ " and " │"
 	top := "┌" + strings.Repeat("─", boxWidth-2) + "┐"
 	bot := "└" + strings.Repeat("─", boxWidth-2) + "┘"
 	scoreLine := fmt.Sprintf("  %s  %s  ", ui.Bold("Quality score:"), ui.Success(fmt.Sprintf("%d/100", score)))
@@ -821,16 +849,44 @@ func printQualityScoreBox(score int, hints []string) {
 	fmt.Fprintln(os.Stderr, top)
 	fmt.Fprintf(os.Stderr, "│ %s%s │\n", scoreLine, strings.Repeat(" ", boxWidth-2-scorePlainLen))
 	if len(hints) > 0 {
-		hintLine := ui.Hint(strings.Join(hints, " · "))
-		hintPlain := stripANSI(hintLine)
-		if len(hintPlain) > boxWidth-4 {
-			hintPlain = hintPlain[:boxWidth-7] + "..."
-			hintLine = ui.Hint(hintPlain)
+		hintText := strings.Join(hints, " · ")
+		for _, line := range wrapLines(stripANSI(hintText), innerWidth) {
+			hintLine := ui.Hint(line)
+			linePlainLen := len(stripANSI(hintLine))
+			fmt.Fprintf(os.Stderr, "│ %s%s │\n", hintLine, strings.Repeat(" ", boxWidth-2-linePlainLen))
 		}
-		fmt.Fprintf(os.Stderr, "│ %s%s │\n", hintLine, strings.Repeat(" ", boxWidth-2-len(hintPlain)))
 	}
 	fmt.Fprintln(os.Stderr, bot)
 	fmt.Fprintln(os.Stderr)
+}
+
+// wrapLines splits s into lines of at most width runes, breaking on spaces. Returns one line if s fits.
+func wrapLines(s string, width int) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	if len(s) <= width {
+		return []string{s}
+	}
+	var lines []string
+	for s != "" {
+		if len(s) <= width {
+			lines = append(lines, strings.TrimSpace(s))
+			break
+		}
+		chunk := s[:width]
+		lastSpace := strings.LastIndex(chunk, " ")
+		if lastSpace <= 0 {
+			lastSpace = width
+		}
+		line := strings.TrimSpace(s[:lastSpace])
+		s = strings.TrimSpace(s[lastSpace:])
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
 }
 
 func stripANSI(s string) string {
@@ -859,18 +915,26 @@ func ratingFromOption(s string) int {
 			return i
 		}
 	}
+	// Match full labels case-insensitively (e.g. "1 - poor", "5 - great")
 	for i, opt := range ratingOptions {
-		if opt == s {
+		if strings.EqualFold(opt, s) {
 			if i == 5 {
 				return 0
 			}
 			return i + 1
 		}
 	}
+	// Default "5" + user typed "1" can produce "51"; take last digit so we get 1 and offer retry
+	if len(s) >= 1 {
+		last := s[len(s)-1]
+		if last >= '1' && last <= '5' {
+			return int(last - '0')
+		}
+	}
 	return 0
 }
 
-// askUserRating prompts for a 1-5 rating. User can move with arrow keys or type 1-5 / s. Returns rating (1-5), or 0 if skipped.
+// askUserRating prompts for a 1-5 rating. One horizontal line of options; user types 1–5 or s. Returns rating (1-5), or 0 if skipped.
 func askUserRating() int {
 	if !ui.Interactive() {
 		return 0
@@ -878,7 +942,7 @@ func askUserRating() int {
 	fmt.Fprintf(os.Stderr, "\n  Rate this output:  %s  %s  %s  %s  %s  %s\n  ",
 		ui.Hint("1"), ui.Hint("2"), ui.Hint("3"), ui.Hint("4"), ui.Hint("5"), ui.Hint("[s]kip"))
 	var choice string
-	if err := ui.SelectOption("Use ↑↓ or type 1–5 / s", ratingOptions, &choice); err != nil {
+	if err := ui.InputWithDefault("(1-5 or s)", "5", &choice); err != nil {
 		return 0
 	}
 	r := ratingFromOption(choice)
