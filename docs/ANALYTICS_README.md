@@ -24,13 +24,56 @@ Single guide for founder: user activity and satisfaction across GA4, Cloudflare 
 ## Analytics Engine
 
 - **Link:** [Analytics Engine SQL API](https://developers.cloudflare.com/analytics/analytics-engine/sql-api). Optional: [Grafana](https://developers.cloudflare.com/analytics/analytics-engine/grafana/) for dashboards.
-- **Dataset:** `promptctl_enhance`. Schema: blobs (e.g. status, path; or `"rating"` and rating value), doubles (intent length, count). No PII.
-- **Example queries** (run via SQL API or dashboard; adapt to your account/dataset name and column names per Cloudflare docs):
-  - **Requests last 24h by status:** filter by time range and group by first blob (ok vs error).
-  - **Error rate last 7 days:** count where blob0 = 'error' / total count.
-  - **Ratings by day:** filter blob0 = 'rating', group by date, sum count.
-  - **Ratings distribution (1–5):** filter blob0 = 'rating', group by blob1 (rating value).
-- **How to run:** Use the SQL API with an API token (see Cloudflare docs), or open the Analytics Engine in the Cloudflare dashboard and run SQL there.
+- **Dataset:** `promptctl_enhance`. Table name in SQL: `promptctl_enhance`. Columns: `timestamp`, `_sample_interval`, `index1`, `blob1`…`blob20`, `double1`…`double20`. No PII.
+
+**Quick reference — writing events**
+
+1. **Binding** (in `worker/wrangler.toml`): `[[analytics_engine_datasets]]` with `binding = "ENHANCE_ANALYTICS"`, `dataset = "promptctl_enhance"`.
+2. **In the Worker:** call `env.ENHANCE_ANALYTICS.writeDataPoint({ blobs, doubles, indexes })`. Keep field order the same for every event. You don’t need to await it; it runs in the background.
+3. **Example:** `env.ENHANCE_ANALYTICS.writeDataPoint({ blobs: ['ok', '/enhance'], doubles: [intentLength, 1], indexes: [''] })`. Use `indexes: [crypto.randomUUID()]` if you want sampling per event; we use `['']` for aggregate stats.
+
+**Schema (what the enhance worker writes):**
+
+| Event type   | blob1        | blob2     | double1      | double2 |
+|-------------|--------------|-----------|--------------|--------|
+| Request     | status       | path      | intent length| 1      |
+| Rating      | `"rating"`   | 1–5       | intent length| 1      |
+| Feedback err| `feedback_error` | `d1_insert` | 0       | 1      |
+
+**How to run queries:**
+
+1. **Create an API token:** [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) → Create Custom Token → Permissions: **Account \| Account Analytics \| Read**. Copy the token.
+2. **Call the SQL API** (replace `ACCOUNT_ID` and `API_TOKEN`):
+
+```bash
+curl "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/analytics_engine/sql" \
+  --header "Authorization: Bearer API_TOKEN" \
+  --data "SELECT * FROM promptctl_enhance WHERE timestamp > NOW() - INTERVAL '1' DAY LIMIT 10"
+```
+
+3. **Example queries** (use `SUM(_sample_interval)` for counts when sampling may apply):
+
+```sql
+-- Requests last 24h by status (ok vs error)
+SELECT blob1 AS status, blob2 AS path, SUM(_sample_interval) AS n
+FROM promptctl_enhance
+WHERE timestamp > NOW() - INTERVAL '1' DAY AND blob1 IN ('ok', 'error')
+GROUP BY blob1, blob2;
+
+-- Error rate last 7 days
+SELECT
+  SUM(CASE WHEN blob1 = 'error' THEN _sample_interval ELSE 0 END) * 1.0 / NULLIF(SUM(_sample_interval), 0) AS error_rate,
+  SUM(_sample_interval) AS total
+FROM promptctl_enhance
+WHERE timestamp > NOW() - INTERVAL '7' DAY AND blob1 IN ('ok', 'error');
+
+-- Ratings distribution (1–5)
+SELECT blob2 AS rating, SUM(_sample_interval) AS n
+FROM promptctl_enhance
+WHERE blob1 = 'rating' AND timestamp > NOW() - INTERVAL '30' DAY
+GROUP BY blob2
+ORDER BY blob2;
+```
 
 ---
 

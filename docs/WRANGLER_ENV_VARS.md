@@ -17,7 +17,7 @@ Local overrides: `.dev.vars` in each worker dir (gitignored).
 **Secrets** (list with `cd worker-try && npx wrangler secret list`):
 | Secret                    | Purpose |
 |---------------------------|---------|
-| `TRY_JWT_SECRET`          | JWT signing (or use `SUPABASE_JWT_SECRET`) |
+| `TRY_JWT_SECRET`          | JWT signing (or use `SUPABASE_JWT_SECRET` for backward compat) |
 | `GOOGLE_CLIENT_ID`        | Google OAuth |
 | `GOOGLE_CLIENT_SECRET`    | Google OAuth |
 | `GITHUB_CLIENT_ID`        | GitHub OAuth |
@@ -30,24 +30,24 @@ Local overrides: `.dev.vars` in each worker dir (gitignored).
 
 ## promptctl-enhance (`worker/`)
 
-**From wrangler.toml:** No `[vars]`. Uses bindings: `AI`, `ENHANCE_ANALYTICS`, `ANALYTICS_DB` (D1).
+**From wrangler.toml:** No `[vars]`. No secrets required. Uses bindings only: `AI`, `ENHANCE_ANALYTICS`, `ANALYTICS_DB` (D1).
 
 **Bindings (not env):** `AI` (Workers AI), `ENHANCE_ANALYTICS` (Analytics Engine dataset `promptctl_enhance`), `ANALYTICS_DB` (D1 database `promptctl-analytics`, used for feedback storage). One-time setup: from repo root run **`make analytics-init`** to create the D1 database and set `database_id` in `worker/wrangler.toml`.
 
-**Secrets:** Run `cd worker && npx wrangler secret list` (requires `CLOUDFLARE_API_TOKEN` if not logged in).
+**Secrets:** None. If `PROMPTCTL_GA4_SECRET` appears in CF for this worker, it is unused (GA4 is used by the CLI only); you can remove it with `cd worker && npx wrangler secret delete PROMPTCTL_GA4_SECRET`.
 
 ---
 
 ## promptctl-enhance-alerts (`worker-alerts/`)
 
-**From wrangler.toml [vars]:**
-| Variable           | Set in .dev.vars or production |
-|--------------------|--------------------------------|
-| `CF_ACCOUNT_ID`    | Account ID (dashboard URL)     |
-| `ALERT_WEBHOOK_URL`| Optional; e.g. Slack webhook    |
+**From wrangler.toml:** No `[vars]` keys (set via secrets or .dev.vars). Worker not deployed by default; deploy with `make deploy-workers` from repo that includes worker-alerts.
 
-**Secrets:** `CF_API_TOKEN` (and optionally others). Run:
-`cd worker-alerts && npx wrangler secret list`
+**Secrets** (set with `npx wrangler secret put <NAME>` from `worker-alerts/`):
+| Secret               | Purpose |
+|----------------------|---------|
+| `CF_ACCOUNT_ID`      | Account ID (dashboard URL); can be var or secret |
+| `CF_API_TOKEN`       | API token for Analytics Engine SQL API |
+| `ALERT_WEBHOOK_URL`  | Optional; e.g. Slack/Discord webhook for alert payloads |
 
 ---
 
