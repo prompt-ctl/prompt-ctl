@@ -27,12 +27,13 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.5"
+const version = "0.8.6"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
 	if len(os.Args) < 2 {
 		printUsage()
+		maybeShowAliasTip()
 		return nil
 	}
 
@@ -89,6 +90,7 @@ func Execute() error {
 		return nil
 	case "help", "-h", "--help":
 		printUsage()
+		maybeShowAliasTip()
 		return nil
 	default:
 		// Try to run it as a prompt template name directly
@@ -103,7 +105,8 @@ func printUsage() {
 
 USAGE:
   promptctl <command> [arguments]
-  New? Run 'promptctl savings' to see your potential annual savings.
+  New? Run 'promptctl init' to set up; then 'promptctl savings' to see your potential annual savings.
+  Shortcuts: Run 'promptctl init' to add shell aliases (prompt, p) — then use: prompt create "..." or p list.
 
 PROMPT ENGINEERING:
   create "intent"     Transform raw intent into a structured prompt (alias: c)
@@ -203,7 +206,16 @@ func createPrompt() error {
 		ClientVersion: version,
 	}
 
-	result, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+	showSpinner := appCfg.EnhanceMode == "llm" && stderrIsTerminal()
+	var result *prompt.EnhanceResult
+	if showSpinner {
+		done := make(chan struct{})
+		go runSpinner(done, "Analyzing prompt...")
+		result, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+		close(done)
+	} else {
+		result, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to enhance prompt: %w", err)
 	}
@@ -250,7 +262,15 @@ func createPrompt() error {
 			if err != nil || !retry {
 				break
 			}
-			result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+			var result2 *prompt.EnhanceResult
+			if showSpinner {
+				done := make(chan struct{})
+				go runSpinner(done, "Analyzing prompt...")
+				result2, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+				close(done)
+			} else {
+				result2, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+			}
 			if err != nil {
 				break
 			}
@@ -832,9 +852,41 @@ func stdoutIsTerminal() bool {
 	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
+// stderrIsTerminal returns true if stderr is a character device (so we can show a spinner).
+func stderrIsTerminal() bool {
+	stat, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
 // interactive returns true when both stdin and stdout are terminals (no piping).
 func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
+}
+
+// runSpinner runs a terminal spinner on stderr until done is closed. Message is shown before the spinner char.
+func runSpinner(done <-chan struct{}, message string) {
+	if !stderrIsTerminal() {
+		return
+	}
+	frames := []rune{'|', '/', '-', '\\'}
+	tick := time.NewTicker(120 * time.Millisecond)
+	defer tick.Stop()
+	var i int
+	for {
+		select {
+		case <-done:
+			// Clear the line: \r + spaces + \r (or ANSI clear to EOL)
+			fmt.Fprintf(os.Stderr, "\r\033[K")
+			return
+		case <-tick.C:
+			c := frames[i%len(frames)]
+			i++
+			fmt.Fprintf(os.Stderr, "\r%s %c ", message, c)
+		}
+	}
 }
 
 // printQualityScoreBox writes a framed quality score and hints to stderr (bold, visible). Hints wrap to multiple lines so full text is shown.
