@@ -42,3 +42,16 @@ func Input(message string, result *string) error {
 	}
 	return survey.AskOne(prompt, result)
 }
+
+// InputWithDefault is like Input but with a default value (user can press Enter to accept).
+func InputWithDefault(message string, defaultVal string, result *string) error {
+	if !Interactive() {
+		*result = defaultVal
+		return ErrNotInteractive
+	}
+	prompt := &survey.Input{
+		Message: message,
+		Default: defaultVal,
+	}
+	return survey.AskOne(prompt, result)
+}

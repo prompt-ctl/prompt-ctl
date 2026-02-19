@@ -28,6 +28,14 @@ func Hint(s string) string {
 	return ansiDim + s + ansiReset
 }
 
+// Bold returns s with bold ANSI when TTY, else s unchanged.
+func Bold(s string) string {
+	if !Interactive() {
+		return s
+	}
+	return "\033[1m" + s + ansiReset
+}
+
 // Heading returns s with cyan ANSI when TTY, else s unchanged.
 func Heading(s string) string {
 	if !Interactive() {

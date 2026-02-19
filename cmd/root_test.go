@@ -72,8 +72,8 @@ func TestExecute_CreateRule_StdoutContainsContext(t *testing.T) {
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
 	out := buf.String()
-	if !strings.Contains(out, "<context>") {
-		t.Errorf("stdout should contain <context> when using rule enhance; got:\n%s", out)
+	if !strings.Contains(out, "<context>") && !strings.Contains(out, "## Context") {
+		t.Errorf("stdout should contain <context> or ## Context when using rule enhance; got:\n%s", out)
 	}
 }
 

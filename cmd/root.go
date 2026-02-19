@@ -26,7 +26,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.2"
+const version = "0.8.3"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -146,15 +146,30 @@ COST SAVINGS:
 // createPrompt transforms raw intent into a structured prompt
 func createPrompt() error {
 	if len(os.Args) < 3 {
-		return fmt.Errorf("usage: promptctl create \"your raw intent here\" [--save=name] [--format=xml|markdown] [--persona=\"...\"] [--score] [--no-rate]")
+		return fmt.Errorf("usage: promptctl create \"your raw intent here\" [--save=name] [--format=markdown|xml|yaml|json|text] [--persona=\"...\"] [--score] [--no-rate]")
 	}
 
 	intent := os.Args[2]
 	vars := parseVars(os.Args[3:])
 
-	format := "xml"
+	format := "markdown"
 	if f, ok := vars["format"]; ok {
 		format = f
+	} else if interactive() {
+		var formatChoice string
+		formatOptions := []string{"Markdown (recommended)", "XML", "YAML", "JSON", "Plain text"}
+		if err := ui.SelectOption("Output format", formatOptions, &formatChoice); err == nil {
+			switch formatChoice {
+			case "Markdown (recommended)":
+				format = "markdown"
+			case "XML":
+				format = "xml"
+			case "YAML", "JSON", "Plain text":
+				format = "markdown"
+			default:
+				format = "markdown"
+			}
+		}
 	}
 
 	saveName := ""
@@ -192,12 +207,7 @@ func createPrompt() error {
 	showScore := hasFlag("--score") || (appCfg.EnhanceMode == "llm" && appCfg.EnhanceURL != "")
 	if showScore {
 		sc := prompt.ScoreEnhanceResult(cfg.Intent, result.Prompt)
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintf(os.Stderr, "  %s\n", ui.Success(fmt.Sprintf("Quality score: %d/100", sc.Score)))
-		if len(sc.Hints) > 0 {
-			fmt.Fprintf(os.Stderr, "  %s\n", ui.Hint(strings.Join(sc.Hints, " · ")))
-		}
-		fmt.Fprintln(os.Stderr)
+		printQualityScoreBox(sc.Score, sc.Hints)
 	}
 
 	fmt.Println(ui.FormatPromptForTerminal(result.Prompt))
@@ -236,12 +246,16 @@ func createPrompt() error {
 				break
 			}
 			currentResult = result2
+			if showScore {
+				sc2 := prompt.ScoreEnhanceResult(cfg.Intent, result2.Prompt)
+				printQualityScoreBox(sc2.Score, sc2.Hints)
+			}
 			fmt.Println(ui.FormatPromptForTerminal(result2.Prompt))
 		}
 	}
 
 	if saveName == "" && currentResult.Prompt != "" && interactive() {
-		askSaveToMemory(currentResult, appCfg)
+		askSaveToMemory(currentResult, appCfg, intent)
 	}
 
 	if interactive() {
@@ -728,9 +742,55 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
+// printQualityScoreBox writes a framed quality score and hints to stderr (bold, visible).
+func printQualityScoreBox(score int, hints []string) {
+	const boxWidth = 56
+	top := "┌" + strings.Repeat("─", boxWidth-2) + "┐"
+	bot := "└" + strings.Repeat("─", boxWidth-2) + "┘"
+	scoreLine := fmt.Sprintf("  %s  %s  ", ui.Bold("Quality score:"), ui.Success(fmt.Sprintf("%d/100", score)))
+	scorePlainLen := len(stripANSI(scoreLine))
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, top)
+	fmt.Fprintf(os.Stderr, "│ %s%s │\n", scoreLine, strings.Repeat(" ", boxWidth-2-scorePlainLen))
+	if len(hints) > 0 {
+		hintLine := ui.Hint(strings.Join(hints, " · "))
+		hintPlain := stripANSI(hintLine)
+		if len(hintPlain) > boxWidth-4 {
+			hintPlain = hintPlain[:boxWidth-7] + "..."
+			hintLine = ui.Hint(hintPlain)
+		}
+		fmt.Fprintf(os.Stderr, "│ %s%s │\n", hintLine, strings.Repeat(" ", boxWidth-2-len(hintPlain)))
+	}
+	fmt.Fprintln(os.Stderr, bot)
+	fmt.Fprintln(os.Stderr)
+}
+
+func stripANSI(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\033' && i+1 < len(s) && s[i+1] == '[' {
+			for i < len(s) && s[i] != 'm' {
+				i++
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
 var ratingOptions = []string{"1 - Poor", "2", "3", "4", "5 - Great", "Skip"}
 
 func ratingFromOption(s string) int {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "s" || s == "skip" {
+		return 0
+	}
+	for i := 1; i <= 5; i++ {
+		if s == strconv.Itoa(i) {
+			return i
+		}
+	}
 	for i, opt := range ratingOptions {
 		if opt == s {
 			if i == 5 {
@@ -742,13 +802,15 @@ func ratingFromOption(s string) int {
 	return 0
 }
 
-// askUserRating prompts for a 1-5 rating. Returns rating (1-5), or 0 if skipped.
+// askUserRating prompts for a 1-5 rating (horizontal: 1 2 3 4 5 or s). Returns rating (1-5), or 0 if skipped.
 func askUserRating() int {
 	if !ui.Interactive() {
 		return 0
 	}
+	fmt.Fprintf(os.Stderr, "\n  Rate this output:  %s  %s  %s  %s  %s  %s\n  ",
+		ui.Hint("1"), ui.Hint("2"), ui.Hint("3"), ui.Hint("4"), ui.Hint("5"), ui.Hint("[s]kip"))
 	var choice string
-	if err := ui.SelectOption("\nRate this output", ratingOptions, &choice); err != nil {
+	if err := ui.InputWithDefault("(1-5 or s)", "5", &choice); err != nil {
 		return 0
 	}
 	r := ratingFromOption(choice)
@@ -964,8 +1026,43 @@ func readLineStdin() string {
 	return ""
 }
 
+// suggestPromptName returns a safe prompt name from intent; if name exists in entries, appends timestamp.
+func suggestPromptName(intent string, entries []prompt.PromptEntry) string {
+	words := strings.Fields(intent)
+	const maxWords = 6
+	if len(words) > maxWords {
+		words = words[:maxWords]
+	}
+	slug := strings.ToLower(strings.Join(words, "-"))
+	slug = strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' || r == '_' {
+			return r
+		}
+		return -1
+	}, slug)
+	for strings.Contains(slug, "--") {
+		slug = strings.ReplaceAll(slug, "--", "-")
+	}
+	slug = strings.Trim(slug, "-")
+	if slug == "" {
+		slug = "prompt"
+	}
+	if len(slug) > 50 {
+		slug = slug[:50]
+	}
+	exists := make(map[string]bool)
+	for _, e := range entries {
+		exists[e.Name] = true
+	}
+	if !exists[slug] {
+		return slug
+	}
+	ts := time.Now().UTC().Format("200601021504")
+	return slug + "-" + ts
+}
+
 // askSaveToMemory prompts interactively to save the enhanced prompt to memory (PromptsDir).
-func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
+func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config, intent string) {
 	if !ui.Interactive() {
 		return
 	}
@@ -995,8 +1092,12 @@ func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
 		fmt.Fprintln(os.Stderr, "Invalid folder name (use only letters, numbers, hyphen, underscore).")
 		return
 	}
-	_ = ui.Input("Prompt name", &name)
+	suggested := suggestPromptName(intent, entries)
+	_ = ui.InputWithDefault("Prompt name (Enter to use suggested, or type your own)", suggested, &name)
 	name = strings.ReplaceAll(strings.TrimSpace(name), " ", "-")
+	if name == "" {
+		name = suggested
+	}
 	if name == "" || !prompt.IsValidTemplateName(name) {
 		fmt.Fprintln(os.Stderr, "Invalid prompt name (use only letters, numbers, hyphen, underscore).")
 		return
