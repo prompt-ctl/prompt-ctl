@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.7"
+const version = "0.8.7a"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -750,6 +750,12 @@ func maybeOfferShellAliases() {
 	shortAlias := "p"
 	promptTaken, _ := shell.AliasExists(profile, "prompt")
 	pTaken, _ := shell.AliasExists(profile, "p")
+	if promptTaken || pTaken {
+		skip, _ := ui.Confirm("Aliases are already set. Skip alias setup?", true)
+		if skip {
+			return
+		}
+	}
 	if promptTaken {
 		var custom string
 		if err := ui.InputWithDefault("Alias 'prompt' is already in use. What name should we use instead? (e.g. pt)", "pt", &custom); err != nil {
@@ -796,14 +802,24 @@ func maybeOfferShellAliases() {
 	fmt.Fprintln(os.Stderr, ui.Hint("Reload your shell: source "+profile))
 }
 
+const welcomeBoxWidth = 57
+
+func welcomeBoxLine(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) > welcomeBoxWidth {
+		s = s[:welcomeBoxWidth-3] + "..."
+	}
+	return "  │" + s + strings.Repeat(" ", welcomeBoxWidth-len(s)) + "│"
+}
+
 // runFirstTimeOnboarding runs the full first-time setup: welcome, init, default format, LLM config, shell aliases. Called once when user runs promptctl for the first time (interactive).
 func runFirstTimeOnboarding() {
 	fmt.Println()
-	fmt.Println("  ┌─────────────────────────────────────────────────────────┐")
-	fmt.Println("  │           Welcome to promptctl                            │")
-	fmt.Println("  │   Turn raw ideas into structured prompts. Save 55–71%     │")
-	fmt.Println("  │   on LLM costs. Works with Claude, GPT-5, Groq, DeepSeek. │")
-	fmt.Println("  └─────────────────────────────────────────────────────────┘")
+	fmt.Println("  ┌" + strings.Repeat("─", welcomeBoxWidth) + "┐")
+	fmt.Println(welcomeBoxLine("Welcome to promptctl"))
+	fmt.Println(welcomeBoxLine("Turn raw ideas into structured prompts. Save 55-71% on LLM costs."))
+	fmt.Println(welcomeBoxLine("Works with Claude, GPT-5, Groq, DeepSeek."))
+	fmt.Println("  └" + strings.Repeat("─", welcomeBoxWidth) + "┘")
 	fmt.Println()
 	fmt.Println("  You'll go through 4 steps:")
 	fmt.Println("    1) Create config and starter templates (~/.promptctl)")
