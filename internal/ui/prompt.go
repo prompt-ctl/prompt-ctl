@@ -55,3 +55,14 @@ func InputWithDefault(message string, defaultVal string, result *string) error {
 	}
 	return survey.AskOne(prompt, result)
 }
+
+// Password prompts for input with masking (no echo). Use for API keys and secrets.
+func Password(message string, result *string) error {
+	if !Interactive() {
+		return ErrNotInteractive
+	}
+	prompt := &survey.Password{
+		Message: message,
+	}
+	return survey.AskOne(prompt, result)
+}

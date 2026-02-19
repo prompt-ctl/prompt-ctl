@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.9.2"
+const version = "0.9.3"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -244,10 +244,18 @@ func createPrompt() error {
 	}
 
 	showSpinner := appCfg.EnhanceMode == "llm" && stderrIsTerminal()
+	spinnerModel := ""
+	if showSpinner {
+		if llmCfg, _ := llm.LoadConfig(); llmCfg != nil && llmCfg.DefaultModel != "" {
+			if m, err := llm.FindModel(llmCfg.DefaultModel); err == nil {
+				spinnerModel = m.Name
+			}
+		}
+	}
 	var result *prompt.EnhanceResult
 	if showSpinner {
 		done := make(chan struct{})
-		go runSpinner(done, "Analyzing prompt...")
+		go runSpinner(done, spinnerModel)
 		result, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 		close(done)
 	} else {
@@ -313,7 +321,7 @@ func createPrompt() error {
 			var result2 *prompt.EnhanceResult
 			if showSpinner {
 				done := make(chan struct{})
-				go runSpinner(done, "Analyzing prompt...")
+				go runSpinner(done, spinnerModel)
 				result2, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 				close(done)
 			} else {
@@ -1093,8 +1101,11 @@ var analyzeSpinnerMessages = []string{
 // spinnerFrames are Braille-style frames for a smooth Claude-like loader (single line, in-place update).
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
+const spinnerLineWidth = 76
+
 // runSpinner shows a cycling spinner glyph and rotating message on stderr until done is closed.
-func runSpinner(done <-chan struct{}, _ string) {
+// modelName is shown on the right side of the line when non-empty (e.g. default send model).
+func runSpinner(done <-chan struct{}, modelName string) {
 	if !stderrIsTerminal() {
 		return
 	}
@@ -1104,6 +1115,18 @@ func runSpinner(done <-chan struct{}, _ string) {
 	defer msgTick.Stop()
 	var frameIdx, msgIdx int
 	msg := analyzeSpinnerMessages[0]
+	writeLine := func(frame, text string) {
+		left := "  " + frame + " " + text + "  "
+		right := ""
+		if modelName != "" {
+			right = "  " + modelName
+		}
+		pad := spinnerLineWidth - len(left) - len(right)
+		if pad < 1 {
+			pad = 1
+		}
+		fmt.Fprintf(os.Stderr, "\r\033[K%s%s%s", left, strings.Repeat(" ", pad), right)
+	}
 	for {
 		select {
 		case <-done:
@@ -1111,11 +1134,11 @@ func runSpinner(done <-chan struct{}, _ string) {
 			return
 		case <-frameTick.C:
 			frameIdx = (frameIdx + 1) % len(spinnerFrames)
-			fmt.Fprintf(os.Stderr, "\r  %s %s  ", spinnerFrames[frameIdx], msg)
+			writeLine(spinnerFrames[frameIdx], msg)
 		case <-msgTick.C:
 			msgIdx = (msgIdx + 1) % len(analyzeSpinnerMessages)
 			msg = analyzeSpinnerMessages[msgIdx]
-			fmt.Fprintf(os.Stderr, "\r  %s %s  ", spinnerFrames[frameIdx], msg)
+			writeLine(spinnerFrames[frameIdx], msg)
 		}
 	}
 }
@@ -1740,7 +1763,8 @@ Examples:
 		return fmt.Errorf("cost estimation failed: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "\n  Sending to %s...\n", est.ModelName)
+	fmt.Fprintf(os.Stderr, "\n  Model:  %s\n", est.ModelName)
+	fmt.Fprintf(os.Stderr, "  Tokens: ~%s in / ~%s out (est.)\n", formatNumSimple(est.InputTokens), formatNumSimple(est.EstOutputTokens))
 	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f vs unstructured)\n\n", est.TotalEstCost, est.Savings)
 
 	// Execute the LLM call
@@ -2211,7 +2235,7 @@ func configOnboarding() error {
 		fmt.Fprint(os.Stderr, "  Press Enter to open the API key page in your browser... ")
 		_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 		openBrowser(selectedProvider.KeyURL)
-		if err := ui.Input("  Paste your API key and press Enter to save", &keyInput); err != nil {
+		if err := ui.Password("  Paste your API key and press Enter to save", &keyInput); err != nil {
 			_ = onboarding.MarkOnboardingSkipped()
 			if consent != nil && consent.Enabled && consent.ClientID != "" {
 				go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
@@ -2405,22 +2429,19 @@ func (c *execCmd) Run() error {
 }
 
 func openBrowser(url string) {
-	// Try platform-specific browser openers
-	commands := [][]string{
-		{"open", url},          // macOS
-		{"xdg-open", url},     // Linux
-		{"cmd", "/c", "start", url}, // Windows
-	}
-
-	for _, cmd := range commands {
-		path, err := findExecutable(cmd[0])
-		if err != nil {
-			continue
-		}
-		_ = path
-		// In a real implementation, exec the command
-		// For now, we rely on the user opening the URL manually
+	var c *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		c = exec.Command("open", url)
+	case "linux":
+		c = exec.Command("xdg-open", url)
+	case "windows":
+		c = exec.Command("cmd", "/c", "start", "", url)
+	default:
 		return
+	}
+	if c != nil {
+		_ = c.Start() // best effort; don't block on browser
 	}
 }
 
