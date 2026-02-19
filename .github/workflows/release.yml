@@ -82,19 +82,15 @@ jobs:
 
       - name: Check for Mac app script
         id: check
-        run: echo "exists=$([ -f scripts/build-mac-app.sh ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+        run: echo "exists=$([ -f .github/scripts/build-mac-app.sh ] && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
       - name: Build Mac app and create DMG
         id: build
         if: steps.check.outputs.exists == 'true'
         run: |
-          if [ -f scripts/build-mac-app.sh ]; then
-            ./scripts/build-mac-app.sh
-            echo "built=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "scripts/build-mac-app.sh not found, skipping DMG build"
-            echo "built=false" >> "$GITHUB_OUTPUT"
-          fi
+          chmod +x .github/scripts/build-mac-app.sh
+          ./.github/scripts/build-mac-app.sh
+          echo "built=true" >> "$GITHUB_OUTPUT"
 
       - name: Upload DMG to promptctl-releases
         if: steps.build.outputs.built == 'true'
