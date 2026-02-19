@@ -10,7 +10,7 @@ command -v wrangler >/dev/null 2>&1 || { echo "Install wrangler: npm install -g 
 wrangler whoami >/dev/null 2>&1 || { echo "Run: wrangler login"; exit 1; }
 
 echo "Deploying promptctl-enhance..."
-(cd worker && npm ci --omit=dev 2>/dev/null || true && wrangler deploy)
+(cd worker && npm ci --omit=dev 2>/dev/null || true && wrangler d1 migrations apply promptctl-analytics --remote && wrangler deploy)
 echo "Deploying promptctl-try..."
 (cd worker-try && npm ci --omit=dev 2>/dev/null || true && wrangler deploy)
 
