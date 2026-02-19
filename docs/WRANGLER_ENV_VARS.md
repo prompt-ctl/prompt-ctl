@@ -30,7 +30,9 @@ Local overrides: `.dev.vars` in each worker dir (gitignored).
 
 ## promptctl-enhance (`worker/`)
 
-**From wrangler.toml:** No `[vars]`. Uses bindings: `AI`, `ENHANCE_ANALYTICS`.
+**From wrangler.toml:** No `[vars]`. Uses bindings: `AI`, `ENHANCE_ANALYTICS`, `ANALYTICS_DB` (D1).
+
+**Bindings (not env):** `AI` (Workers AI), `ENHANCE_ANALYTICS` (Analytics Engine dataset `promptctl_enhance`), `ANALYTICS_DB` (D1 database `promptctl-analytics`, used for feedback storage). One-time setup: from repo root run **`make analytics-init`** to create the D1 database and set `database_id` in `worker/wrangler.toml`.
 
 **Secrets:** Run `cd worker && npx wrangler secret list` (requires `CLOUDFLARE_API_TOKEN` if not logged in).
 
