@@ -12,8 +12,17 @@ swift build -c release
 cd ..
 
 mkdir -p "$BUNDLE_NAME/Contents/MacOS"
+mkdir -p "$BUNDLE_NAME/Contents/Resources"
 cp "$APP_DIR/.build/release/promptctl-app" "$BUNDLE_NAME/Contents/MacOS/"
 cp "$APP_DIR/Info.plist" "$BUNDLE_NAME/Contents/"
+if [[ -f "$APP_DIR/AppIcon.icns" ]]; then
+  cp "$APP_DIR/AppIcon.icns" "$BUNDLE_NAME/Contents/Resources/"
+elif [[ -f "$APP_DIR/Resources/AppIcon.icns" ]]; then
+  cp "$APP_DIR/Resources/AppIcon.icns" "$BUNDLE_NAME/Contents/Resources/"
+fi
+
+# Ad-hoc sign so Gatekeeper doesn't report app as "damaged" when opened from DMG
+codesign -s - --force --deep "$BUNDLE_NAME"
 
 # Create DMG in promptctl-app/ so upload path matches workflow
 rm -f "$APP_DIR/$DMG_NAME"
