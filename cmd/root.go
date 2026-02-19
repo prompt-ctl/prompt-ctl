@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.8"
+const version = "0.8.8a"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -265,6 +265,17 @@ func createPrompt() error {
 	}
 
 	fmt.Println(ui.FormatPromptForTerminal(result.Prompt))
+
+	if interactive() {
+		copyIt, err := ui.Confirm("\n  Copy prompt to clipboard?", true)
+		if err == nil && copyIt {
+			if err := copyToClipboard(result.Prompt); err != nil {
+				fmt.Fprintln(os.Stderr, ui.Hint("  (clipboard unavailable: "+err.Error()+")"))
+			} else {
+				fmt.Fprintln(os.Stderr, ui.Success("  ✓ Copied to clipboard."))
+			}
+		}
+	}
 
 	currentResult := result
 	if !hasFlag("--no-rate") && interactive() {
@@ -1066,35 +1077,41 @@ func interactive() bool {
 	return stdinIsTerminal() && stdoutIsTerminal()
 }
 
-// analyzeSpinnerMessages are rotating funny lines shown while the prompt is being enhanced.
+// analyzeSpinnerMessages are rotating lines shown next to the spinner (change every few seconds).
 var analyzeSpinnerMessages = []string{
 	"Analyzing prompt...",
 	"Consulting the prompt oracle...",
 	"Polishing your words...",
 	"Adding structure (and savings)...",
-	"Turning intent into gold...",
 	"Almost there...",
-	"One sec, optimizing tokens...",
-	"Making it 67% better...",
 }
 
-// runSpinner runs a funny rotating message on stderr until done is closed.
+// spinnerFrames are Braille-style frames for a smooth Claude-like loader (single line, in-place update).
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// runSpinner shows a cycling spinner glyph and rotating message on stderr until done is closed.
 func runSpinner(done <-chan struct{}, _ string) {
 	if !stderrIsTerminal() {
 		return
 	}
-	tick := time.NewTicker(380 * time.Millisecond)
-	defer tick.Stop()
-	var i int
+	frameTick := time.NewTicker(80 * time.Millisecond)
+	msgTick := time.NewTicker(2200 * time.Millisecond)
+	defer frameTick.Stop()
+	defer msgTick.Stop()
+	var frameIdx, msgIdx int
+	msg := analyzeSpinnerMessages[0]
 	for {
 		select {
 		case <-done:
 			fmt.Fprintf(os.Stderr, "\r\033[K")
 			return
-		case <-tick.C:
-			msg := analyzeSpinnerMessages[i%len(analyzeSpinnerMessages)]
-			i++
-			fmt.Fprintf(os.Stderr, "\r  %s   ", msg)
+		case <-frameTick.C:
+			frameIdx = (frameIdx + 1) % len(spinnerFrames)
+			fmt.Fprintf(os.Stderr, "\r  %s %s  ", spinnerFrames[frameIdx], msg)
+		case <-msgTick.C:
+			msgIdx = (msgIdx + 1) % len(analyzeSpinnerMessages)
+			msg = analyzeSpinnerMessages[msgIdx]
+			fmt.Fprintf(os.Stderr, "\r  %s %s  ", spinnerFrames[frameIdx], msg)
 		}
 	}
 }
@@ -1585,28 +1602,28 @@ func listDir(root string, maxDepth int) (string, error) {
 	return sb.String(), err
 }
 
-// copyToClipboard tries available clipboard tools
+// copyToClipboard runs a clipboard tool with text on stdin (pbcopy, xclip, xsel, wl-copy).
 func copyToClipboard(text string) error {
-	// Try common clipboard commands
 	tools := []struct {
 		name string
 		args []string
 	}{
-		{"pbcopy", nil},                           // macOS
-		{"xclip", []string{"-selection", "clipboard"}}, // Linux X11
-		{"xsel", []string{"--clipboard", "--input"}},   // Linux X11 alt
-		{"wl-copy", nil},                          // Wayland
+		{"pbcopy", nil},                                    // macOS
+		{"xclip", []string{"-selection", "clipboard"}},     // Linux X11
+		{"xsel", []string{"--clipboard", "--input"}},       // Linux X11 alt
+		{"wl-copy", nil},                                   // Wayland
+		{"clip", nil},                                      // Windows
 	}
-
 	for _, tool := range tools {
 		path, err := findExecutable(tool.name)
 		if err != nil {
 			continue
 		}
-		_ = path
-		// In a real implementation, pipe text to the command's stdin
-		// For now, we indicate success if the tool exists
-		_ = tool.args
+		cmd := exec.Command(path, tool.args...)
+		cmd.Stdin = strings.NewReader(text)
+		if err := cmd.Run(); err != nil {
+			continue
+		}
 		return nil
 	}
 	return fmt.Errorf("no clipboard tool found")
