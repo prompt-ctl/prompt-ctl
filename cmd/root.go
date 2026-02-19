@@ -21,12 +21,13 @@ import (
 	"github.com/oleg-koval/promptctl/internal/analytics"
 	"github.com/oleg-koval/promptctl/internal/onboarding"
 	"github.com/oleg-koval/promptctl/internal/safepath"
+	"github.com/oleg-koval/promptctl/internal/shell"
 	"github.com/oleg-koval/promptctl/internal/ui"
 	"github.com/oleg-koval/promptctl/llm"
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.3"
+const version = "0.8.4"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -152,9 +153,16 @@ func createPrompt() error {
 	intent := os.Args[2]
 	vars := parseVars(os.Args[3:])
 
+	appCfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
 	format := "markdown"
 	if f, ok := vars["format"]; ok {
 		format = f
+	} else if appCfg.DefaultCreateFormat != "" {
+		format = appCfg.DefaultCreateFormat
 	} else if interactive() {
 		var formatChoice string
 		formatOptions := []string{"Markdown (recommended)", "XML", "YAML", "JSON", "Plain text"}
@@ -169,6 +177,11 @@ func createPrompt() error {
 			default:
 				format = "markdown"
 			}
+			remember, _ := ui.Confirm("Remember my choice?", true)
+			if remember {
+				_ = config.SaveCreateFormat(format)
+			}
+			fmt.Fprintln(os.Stderr, ui.Hint("To change output format later: promptctl create --format="+format+" \"...\" (use markdown, xml, yaml, json, or text)"))
 		}
 	}
 
@@ -190,10 +203,6 @@ func createPrompt() error {
 		ClientVersion: version,
 	}
 
-	appCfg, err := config.Load()
-	if err != nil {
-		return err
-	}
 	result, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 	if err != nil {
 		return fmt.Errorf("failed to enhance prompt: %w", err)
@@ -681,9 +690,68 @@ func initConfig() error {
 		}
 		fmt.Printf("Initialized promptctl in: %s\n", cfg.GlobalTemplateDir)
 		fmt.Println("\nStarter templates have been created. Run 'promptctl list' to see them.")
+		if interactive() {
+			maybeOfferShellAliases()
+		}
 	}
 
 	return nil
+}
+
+// maybeOfferShellAliases offers to add shell aliases (prompt, p) after init. If alias names are taken, asks for alternatives.
+func maybeOfferShellAliases() {
+	profile, err := shell.ProfilePath()
+	if err != nil {
+		return
+	}
+	longAlias := "prompt"
+	shortAlias := "p"
+	promptTaken, _ := shell.AliasExists(profile, "prompt")
+	pTaken, _ := shell.AliasExists(profile, "p")
+	if promptTaken {
+		var custom string
+		if err := ui.InputWithDefault("Alias 'prompt' is already in use. What name should we use instead? (e.g. pt)", "pt", &custom); err != nil {
+			return
+		}
+		longAlias = strings.TrimSpace(custom)
+		if longAlias == "" {
+			longAlias = "pt"
+		}
+	}
+	if pTaken {
+		var custom string
+		if err := ui.InputWithDefault("Alias 'p' is already in use. What name should we use instead? (e.g. pc, or leave empty to skip short alias)", "pc", &custom); err != nil {
+			return
+		}
+		custom = strings.TrimSpace(custom)
+		if custom == "" {
+			shortAlias = ""
+		} else {
+			shortAlias = custom
+		}
+	}
+	if shortAlias == longAlias {
+		shortAlias = ""
+	}
+	confirmMsg := "Add shell aliases so you can run '" + longAlias + "'"
+	if shortAlias != "" {
+		confirmMsg += " or '" + shortAlias + "'"
+	}
+	confirmMsg += " instead of 'promptctl'?"
+	ok, err := ui.Confirm(confirmMsg, true)
+	if err != nil || !ok {
+		return
+	}
+	if err := shell.AddAliases(profile, longAlias, shortAlias); err != nil {
+		fmt.Fprintf(os.Stderr, "Could not write to %s: %v\n", profile, err)
+		return
+	}
+	fmt.Println(ui.Success("Aliases added to " + profile + "."))
+	fmt.Fprintln(os.Stderr, ui.Hint("Use them with: "+longAlias+" create \"...\" or "+longAlias+" list"))
+	if shortAlias != "" {
+		fmt.Fprintln(os.Stderr, ui.Hint("Short form: "+shortAlias+" create \"...\" or "+shortAlias+" list"))
+	}
+	fmt.Fprintln(os.Stderr, ui.Hint("Reload your shell: source "+profile))
 }
 
 // parseVars extracts --key=value pairs from args
@@ -802,7 +870,7 @@ func ratingFromOption(s string) int {
 	return 0
 }
 
-// askUserRating prompts for a 1-5 rating (horizontal: 1 2 3 4 5 or s). Returns rating (1-5), or 0 if skipped.
+// askUserRating prompts for a 1-5 rating. User can move with arrow keys or type 1-5 / s. Returns rating (1-5), or 0 if skipped.
 func askUserRating() int {
 	if !ui.Interactive() {
 		return 0
@@ -810,7 +878,7 @@ func askUserRating() int {
 	fmt.Fprintf(os.Stderr, "\n  Rate this output:  %s  %s  %s  %s  %s  %s\n  ",
 		ui.Hint("1"), ui.Hint("2"), ui.Hint("3"), ui.Hint("4"), ui.Hint("5"), ui.Hint("[s]kip"))
 	var choice string
-	if err := ui.InputWithDefault("(1-5 or s)", "5", &choice); err != nil {
+	if err := ui.SelectOption("Use ↑↓ or type 1–5 / s", ratingOptions, &choice); err != nil {
 		return 0
 	}
 	r := ratingFromOption(choice)

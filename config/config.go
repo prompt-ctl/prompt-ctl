@@ -22,6 +22,8 @@ type Config struct {
 	EnhanceURL string
 	// EnhanceMode is "llm" (default, uses hosted Worker) or "rule" (offline). Set with PROMPTCTL_ENHANCE.
 	EnhanceMode string
+	// DefaultCreateFormat is the saved output format for "promptctl create" when not overridden by --format. Stored in ~/.promptctl/create_format.
+	DefaultCreateFormat string
 }
 
 // Load discovers and merges config from global and local sources.
@@ -59,8 +61,26 @@ func Load() (*Config, error) {
 	if cfg.EnhanceMode == "llm" && cfg.EnhanceURL == "" {
 		cfg.EnhanceURL = DefaultEnhanceURL
 	}
+	if b, err := os.ReadFile(filepath.Join(globalDir, "create_format")); err == nil {
+		if f := strings.TrimSpace(string(b)); f != "" {
+			cfg.DefaultCreateFormat = f
+		}
+	}
 
 	return cfg, nil
+}
+
+// SaveCreateFormat persists the default create output format to ~/.promptctl/create_format.
+func SaveCreateFormat(format string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	globalDir := filepath.Join(home, ".promptctl")
+	if err := os.MkdirAll(globalDir, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(globalDir, "create_format"), []byte(format+"\n"), 0644)
 }
 
 // SavePromptsDir persists the prompts directory path to ~/.promptctl/prompts_dir.
