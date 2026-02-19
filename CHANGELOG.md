@@ -4,6 +4,11 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+- **Scoring and retry:** If user rates output 1–3, offer retry (no daily limit); loop until 4/5, Skip, or 15 tries. Score is always saved to ratings and analytics.
+- **Prompt display:** Colored section headers (markdown `#`/`##`/`###` and XML tags) in terminal; normalized newlines between sections and trailing newline.
+- **Save to memory:** List existing folders when saving; after save, offer to open the folder in Finder (or system file manager).
+- **Feedback session:** From time to time (every 10th create or every 7 days), prompt for anonymous freeform feedback; submit to enhance `/feedback` or append to `~/.promptctl/feedback.log`. Worker adds `POST /feedback` (no auth).
+
 ## [0.8.0] – 2026-02-18
 
 - **CLI UX:** Survey-based flows when TTY: model picker (`promptctl models`), rating and save-to-memory after create, onboarding config wizard; optional ANSI color for success/hint; onboarding skipped state with one-line reminder.

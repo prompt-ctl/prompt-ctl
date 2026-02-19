@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,7 +26,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.1"
+const version = "0.8.2"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -201,31 +204,49 @@ func createPrompt() error {
 
 	currentResult := result
 	if !hasFlag("--no-rate") && interactive() {
-		rating := askUserRating()
-		if rating >= 1 {
-			persistRating(rating, len(intent), appCfg.EnhanceURL)
-			if c, _ := analytics.ReadConsent(); c != nil && c.Enabled && c.ClientID != "" {
-				go analytics.SendEvent(c.ClientID, "prompt_rated", map[string]interface{}{
-					"rating":        rating,
-					"intent_length": len(intent),
-				})
-			}
-		}
-		if rating >= 1 && rating < 3 && !freeRetryUsedToday() {
-			retry, err := ui.Confirm("\nWant to try again for free? (once per day)", false)
-				if err == nil && retry {
-				markFreeRetryUsed()
-				result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
-				if err == nil {
-					currentResult = result2
-					fmt.Println(ui.FormatPromptForTerminal(result2.Prompt))
+		const maxTries = 15
+		for try := 1; try <= maxTries; try++ {
+			rating := askUserRating()
+			if rating >= 1 {
+				persistRating(rating, len(intent), appCfg.EnhanceURL)
+				if c, _ := analytics.ReadConsent(); c != nil && c.Enabled && c.ClientID != "" {
+					go analytics.SendEvent(c.ClientID, "prompt_rated", map[string]interface{}{
+						"rating":        rating,
+						"intent_length": len(intent),
+					})
 				}
 			}
+			if rating >= 4 && rating <= 5 {
+				break
+			}
+			if rating == 0 {
+				break
+			}
+			// rating 1, 2, or 3
+			if try >= maxTries {
+				fmt.Fprintln(os.Stderr, "Max retries reached.")
+				break
+			}
+			retry, err := ui.Confirm("\nWant to retry?", false)
+			if err != nil || !retry {
+				break
+			}
+			result2, err := prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
+			if err != nil {
+				break
+			}
+			currentResult = result2
+			fmt.Println(ui.FormatPromptForTerminal(result2.Prompt))
 		}
 	}
 
 	if saveName == "" && currentResult.Prompt != "" && interactive() {
 		askSaveToMemory(currentResult, appCfg)
+	}
+
+	if interactive() {
+		incrementCreateRunCount()
+		maybeAskFeedback(appCfg)
 	}
 
 	// If --save was specified, write as a reusable template
@@ -382,6 +403,26 @@ func memoryList() error {
 	return nil
 }
 
+// openFolderInManager opens the given absolute path in the OS file manager (Finder, xdg-open, explorer).
+func openFolderInManager(absPath string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", absPath)
+	case "linux":
+		cmd = exec.Command("xdg-open", absPath)
+	case "windows":
+		cmd = exec.Command("explorer", absPath)
+	default:
+		return fmt.Errorf("open folder not supported on %s", runtime.GOOS)
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to open folder: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "Opened %s\n", absPath)
+	return nil
+}
+
 // memoryOpen opens the prompts directory in the OS file manager.
 func memoryOpen() error {
 	cfg, err := config.Load()
@@ -396,22 +437,7 @@ func memoryOpen() error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve path: %w", err)
 	}
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", abs)
-	case "linux":
-		cmd = exec.Command("xdg-open", abs)
-	case "windows":
-		cmd = exec.Command("explorer", abs)
-	default:
-		return fmt.Errorf("open folder not supported on %s", runtime.GOOS)
-	}
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to open folder: %w", err)
-	}
-	fmt.Fprintf(os.Stderr, "Opened %s\n", abs)
-	return nil
+	return openFolderInManager(abs)
 }
 
 // memorySetDir sets and persists the prompts directory.
@@ -800,6 +826,135 @@ func markFreeRetryUsed() {
 	_ = os.WriteFile(filepath.Join(dir, "free_retry_used"), []byte(today), 0644)
 }
 
+const (
+	feedbackIntervalRuns = 10
+	feedbackIntervalDays = 7
+)
+
+// incrementCreateRunCount adds 1 to the create run counter in ~/.promptctl/create_run_count.
+func incrementCreateRunCount() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	path := filepath.Join(dir, "create_run_count")
+	var count int
+	if data, err := os.ReadFile(path); err == nil {
+		count, _ = strconv.Atoi(strings.TrimSpace(string(data)))
+	}
+	count++
+	_ = os.WriteFile(path, []byte(strconv.Itoa(count)), 0644)
+}
+
+// shouldAskFeedback returns true if we should prompt for feedback (every N runs or every N days since last ask).
+func shouldAskFeedback(enhanceURL string) bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	dir := filepath.Join(home, ".promptctl")
+	countPath := filepath.Join(dir, "create_run_count")
+	lastPath := filepath.Join(dir, "feedback_last_asked")
+	var runCount int
+	if data, err := os.ReadFile(countPath); err == nil {
+		runCount, _ = strconv.Atoi(strings.TrimSpace(string(data)))
+	}
+	var lastAsked string
+	if data, err := os.ReadFile(lastPath); err == nil {
+		lastAsked = strings.TrimSpace(string(data))
+	}
+	if runCount%feedbackIntervalRuns == 0 && runCount > 0 {
+		return true
+	}
+	if lastAsked == "" {
+		return false
+	}
+	t, err := time.Parse("2006-01-02", lastAsked)
+	if err != nil {
+		return false
+	}
+	daysSince := int(time.Now().UTC().Sub(t).Hours() / 24)
+	return daysSince >= feedbackIntervalDays
+}
+
+// recordFeedbackAsked writes today's date to ~/.promptctl/feedback_last_asked.
+func recordFeedbackAsked() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	today := time.Now().UTC().Format("2006-01-02")
+	_ = os.WriteFile(filepath.Join(dir, "feedback_last_asked"), []byte(today), 0644)
+}
+
+// submitFeedback sends feedback anonymously to enhanceURL/feedback or appends to local file.
+func submitFeedback(text string, enhanceURL string) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return
+	}
+	enhanceURL = strings.TrimSuffix(enhanceURL, "/")
+	if enhanceURL != "" {
+		body, _ := json.Marshal(map[string]string{"feedback": text})
+		req, err := http.NewRequest("POST", enhanceURL+"/feedback", bytes.NewReader(body))
+		if err != nil {
+			appendFeedbackLocal(text)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			appendFeedbackLocal(text)
+			return
+		}
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+		recordFeedbackAsked()
+		return
+	}
+	appendFeedbackLocal(text)
+}
+
+func appendFeedbackLocal(text string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".promptctl")
+	_ = os.MkdirAll(dir, 0755)
+	path := filepath.Join(dir, "feedback.log")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	ts := time.Now().UTC().Format("2006-01-02T15:04:05Z07:00")
+	_, _ = fmt.Fprintf(f, "%s\t%s\n", ts, text)
+	recordFeedbackAsked()
+}
+
+// maybeAskFeedback prompts for anonymous freeform feedback when appropriate and submits it.
+func maybeAskFeedback(appCfg *config.Config) {
+	if !ui.Interactive() {
+		return
+	}
+	if !shouldAskFeedback(appCfg.EnhanceURL) {
+		return
+	}
+	var text string
+	_ = ui.Input("\nAny feedback for the promptctl team? (optional, Enter to skip)", &text)
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	submitFeedback(text, appCfg.EnhanceURL)
+	fmt.Fprintln(os.Stderr, "Thanks — feedback submitted anonymously.")
+}
+
 // readLineStdin reads one line from stdin (trimmed). Used for interactive prompts.
 func readLineStdin() string {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -817,6 +972,21 @@ func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
 	save, err := ui.Confirm("\nSave to memory?", true)
 	if err != nil || !save {
 		return
+	}
+	entries, _ := prompt.ListPromptsInDir(appCfg.PromptsDir)
+	folderSet := make(map[string]bool)
+	for _, e := range entries {
+		if e.Folder != "" {
+			folderSet[e.Folder] = true
+		}
+	}
+	if len(folderSet) > 0 {
+		folders := make([]string, 0, len(folderSet))
+		for f := range folderSet {
+			folders = append(folders, f)
+		}
+		sort.Strings(folders)
+		fmt.Fprintf(os.Stderr, "Existing folders: %s\n", strings.Join(folders, ", "))
 	}
 	var folder, name string
 	_ = ui.Input("Folder name (optional, Enter to skip)", &folder)
@@ -871,6 +1041,13 @@ func askSaveToMemory(result *prompt.EnhanceResult, appCfg *config.Config) {
 	}
 	fmt.Fprintf(os.Stderr, "Saved to %s\n", path)
 	fmt.Fprintln(os.Stderr, "Prompts are stored only on your computer, not uploaded. If you remove the app, they will be deleted.")
+	openPrompt := "Open folder in Finder?"
+	if runtime.GOOS != "darwin" {
+		openPrompt = "Open folder?"
+	}
+	if openIt, err := ui.Confirm("\n"+openPrompt, false); err == nil && openIt {
+		_ = openFolderInManager(targetAbs)
+	}
 }
 
 // listDir recursively lists directory contents
