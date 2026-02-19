@@ -4,6 +4,12 @@ All notable changes to promptctl are documented here.
 
 ## [Unreleased]
 
+## [0.9.3] – 2026-02-19
+
+- **Loader:** Spinner clears line before each update (no leftover text). Model name shown on the right during prompt preparation.
+- **Send:** Pre-call line shows model and estimated tokens (in/out). Cost report shows actual model and token stats.
+- **Config:** API key prompt uses masked input (password-style). Browser opens automatically when pressing Enter on API key page.
+
 ## [0.9.0] – 2026-02-19
 
 - **Gemini 3.1 Pro:** Google provider with model `gemini-3.1-pro`. `promptctl send` supports `--thinking-level=low|high` and `--media-resolution=low|medium|high` for Gemini; usage tracking uses `usageMetadata` (PDF tokens under IMAGE modality). Set `GOOGLE_API_KEY` or `promptctl config --provider=google --api-key=...`.
