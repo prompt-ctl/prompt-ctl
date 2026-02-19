@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.9.3"
+const version = "0.9.4"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -245,7 +245,9 @@ func createPrompt() error {
 
 	showSpinner := appCfg.EnhanceMode == "llm" && stderrIsTerminal()
 	spinnerModel := ""
+	var rawTokenEst int
 	if showSpinner {
+		rawTokenEst = llm.EstimateTokens(intent)
 		if llmCfg, _ := llm.LoadConfig(); llmCfg != nil && llmCfg.DefaultModel != "" {
 			if m, err := llm.FindModel(llmCfg.DefaultModel); err == nil {
 				spinnerModel = m.Name
@@ -255,7 +257,7 @@ func createPrompt() error {
 	var result *prompt.EnhanceResult
 	if showSpinner {
 		done := make(chan struct{})
-		go runSpinner(done, spinnerModel)
+		go runSpinner(done, spinnerModel, rawTokenEst)
 		result, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 		close(done)
 	} else {
@@ -321,7 +323,7 @@ func createPrompt() error {
 			var result2 *prompt.EnhanceResult
 			if showSpinner {
 				done := make(chan struct{})
-				go runSpinner(done, spinnerModel)
+				go runSpinner(done, spinnerModel, rawTokenEst)
 				result2, err = prompt.EnhanceWithFallback(cfg, appCfg.EnhanceURL, appCfg.EnhanceMode)
 				close(done)
 			} else {
@@ -1104,8 +1106,8 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 const spinnerLineWidth = 76
 
 // runSpinner shows a cycling spinner glyph and rotating message on stderr until done is closed.
-// modelName is shown on the right side of the line when non-empty (e.g. default send model).
-func runSpinner(done <-chan struct{}, modelName string) {
+// modelName is shown on the right; when rawTokenEst > 0, appends " · ~N tok (raw)" (pre-optimization estimate).
+func runSpinner(done <-chan struct{}, modelName string, rawTokenEst int) {
 	if !stderrIsTerminal() {
 		return
 	}
@@ -1115,11 +1117,15 @@ func runSpinner(done <-chan struct{}, modelName string) {
 	defer msgTick.Stop()
 	var frameIdx, msgIdx int
 	msg := analyzeSpinnerMessages[0]
+	rightSuffix := modelName
+	if rawTokenEst > 0 {
+		rightSuffix = modelName + "  ·  ~" + formatNumSimple(rawTokenEst) + " tok (raw)"
+	}
 	writeLine := func(frame, text string) {
 		left := "  " + frame + " " + text + "  "
 		right := ""
-		if modelName != "" {
-			right = "  " + modelName
+		if rightSuffix != "" {
+			right = "  " + rightSuffix
 		}
 		pad := spinnerLineWidth - len(left) - len(right)
 		if pad < 1 {
@@ -1764,8 +1770,9 @@ Examples:
 	}
 
 	fmt.Fprintf(os.Stderr, "\n  Model:  %s\n", est.ModelName)
-	fmt.Fprintf(os.Stderr, "  Tokens: ~%s in / ~%s out (est.)\n", formatNumSimple(est.InputTokens), formatNumSimple(est.EstOutputTokens))
-	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f vs unstructured)\n\n", est.TotalEstCost, est.Savings)
+	fmt.Fprintf(os.Stderr, "  Tokens: ~%s in / ~%s out (optimized)\n", formatNumSimple(est.InputTokens), formatNumSimple(est.EstOutputTokens))
+	fmt.Fprintf(os.Stderr, "  Without promptctl: ~$%.4f (typical rework)\n", est.WastedWithout)
+	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f)\n\n", est.TotalEstCost, est.Savings)
 
 	// Execute the LLM call
 	result, err := llm.CompleteWithOptions(renderedPrompt, modelID, completeOpts)
@@ -1777,18 +1784,20 @@ Examples:
 	fmt.Println(result.Content)
 
 	// Print cost summary to stderr
-	fmt.Fprintf(os.Stderr, "\n  ─── Cost Report ───\n")
-	fmt.Fprintf(os.Stderr, "  Model:    %s\n", result.Model)
-	fmt.Fprintf(os.Stderr, "  Tokens:   %s in / %s out\n",
-		formatNumSimple(result.InputTokens), formatNumSimple(result.OutputTokens))
-	fmt.Fprintf(os.Stderr, "  Cost:     $%.4f\n", result.ActualCost)
-	fmt.Fprintf(os.Stderr, "  Latency:  %.1fs\n", float64(result.LatencyMs)/1000)
 	savedVsUnstructured := result.ActualCost * 2 // fallback
 	if m, err := llm.FindModel(modelID); err == nil {
 		mult := llm.UnstructuredMultiplier(m.InputPerMTok)
 		savedVsUnstructured = result.ActualCost * (mult - 1)
 	}
-	fmt.Fprintf(os.Stderr, "  Saved:    ~$%.4f vs unstructured prompting\n\n", savedVsUnstructured)
+	withoutCost := result.ActualCost + savedVsUnstructured
+	fmt.Fprintf(os.Stderr, "\n  ─── Cost Report ───\n")
+	fmt.Fprintf(os.Stderr, "  Model:    %s\n", result.Model)
+	fmt.Fprintf(os.Stderr, "  Tokens:   %s in / %s out (used)\n",
+		formatNumSimple(result.InputTokens), formatNumSimple(result.OutputTokens))
+	fmt.Fprintf(os.Stderr, "  Cost:     $%.4f\n", result.ActualCost)
+	fmt.Fprintf(os.Stderr, "  Without promptctl: ~$%.4f (typical)\n", withoutCost)
+	fmt.Fprintf(os.Stderr, "  Latency:  %.1fs\n", float64(result.LatencyMs)/1000)
+	fmt.Fprintf(os.Stderr, "  Saved:    ~$%.4f vs unstructured\n\n", savedVsUnstructured)
 
 	return nil
 }
