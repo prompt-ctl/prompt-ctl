@@ -313,7 +313,7 @@ func Complete(prompt string, modelID string) (*CompletionResult, error) {
 		}
 	}
 
-	apiKey := getAPIKey(model.Provider, provider.EnvKey)
+	apiKey := GetAPIKey(model.Provider, provider.EnvKey)
 	if apiKey == "" && model.Provider != "promptctl" {
 		return nil, fmt.Errorf("no API key found for %s. Set it with:\n  promptctl config --provider=%s --api-key=YOUR_KEY\n  or export %s=YOUR_KEY",
 			provider.Name, model.Provider, provider.EnvKey)
@@ -539,18 +539,38 @@ func configPath() string {
 	return filepath.Join(home, ".promptctl", "llm.json")
 }
 
-// getAPIKey checks config file first, then environment variable
-func getAPIKey(provider, envKey string) string {
-	// Config file takes precedence (user explicitly configured it)
+// GetAPIKey returns the API key for a provider (keychain, config, or env). Used for display and by callers.
+func GetAPIKey(provider, envKey string) string {
+	if key, ok := keychainGet(provider); ok && key != "" {
+		return key
+	}
 	cfg, err := LoadConfig()
 	if err == nil {
-		if key, ok := cfg.APIKeys[provider]; ok && key != "" {
+		if key, ok := cfg.APIKeys[provider]; ok && key != "" && key != keychainSentinel {
 			return key
 		}
 	}
-
-	// Fall back to environment variable
 	return os.Getenv(envKey)
+}
+
+// SetAPIKey stores the API key for a provider (keychain on macOS, config file elsewhere)
+func SetAPIKey(provider, key string) error {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+	if cfg.APIKeys == nil {
+		cfg.APIKeys = make(map[string]string)
+	}
+	if err := keychainStore(provider, key); err != nil {
+		return err
+	}
+	if keychainSentinel != "" {
+		cfg.APIKeys[provider] = keychainSentinel
+	} else {
+		cfg.APIKeys[provider] = key
+	}
+	return SaveConfig(cfg)
 }
 
 // -----------------------------------------------------------------------

@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.8.7b"
+const version = "0.8.7c"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -36,9 +36,17 @@ const versionCheckInterval = 24 * time.Hour
 // Execute is the main entry point for the CLI
 func Execute() error {
 	var upgradeMsg string
+	var upgradeCh chan string
 	defer func() {
+		if upgradeCh != nil {
+			select {
+			case msg := <-upgradeCh:
+				upgradeMsg = msg
+			case <-time.After(1500 * time.Millisecond):
+			}
+		}
 		if upgradeMsg != "" {
-			fmt.Fprintln(os.Stderr, ui.Hint(upgradeMsg))
+			fmt.Fprintln(os.Stderr, ui.Hint("↑ "+upgradeMsg))
 		}
 	}()
 
@@ -56,8 +64,12 @@ func Execute() error {
 
 	command := os.Args[1]
 	if command != "version" && command != "-v" && command != "--version" && stderrIsTerminal() && shouldCheckVersion() {
-		upgradeMsg = checkUpgrade(3 * time.Second)
-		markLastVersionCheck()
+		upgradeCh = make(chan string, 1)
+		go func() {
+			msg := checkUpgrade(3 * time.Second)
+			markLastVersionCheck()
+			upgradeCh <- msg
+		}()
 	}
 
 	switch command {
@@ -2148,13 +2160,7 @@ func configOnboarding() error {
 	fmt.Fprintf(os.Stderr, "\n  %s\n\n", ui.Success("✓ Model: "+selectedModel.Name))
 
 	// ── Step 3: API key ──────────────────────────────────────────
-	existingKey := ""
-	if k, ok := cfg.APIKeys[selectedProviderKey]; ok && k != "" {
-		existingKey = k
-	}
-	if existingKey == "" {
-		existingKey = os.Getenv(selectedProvider.EnvKey)
-	}
+	existingKey := llm.GetAPIKey(selectedProviderKey, selectedProvider.EnvKey)
 	var keyInput string
 	if existingKey != "" {
 		keep, err := ui.Confirm("  You already have a key configured: "+maskKey(existingKey)+"\n  Keep existing key?", true)
@@ -2168,8 +2174,10 @@ func configOnboarding() error {
 		}
 	}
 	fmt.Printf("  To get your API key, open: %s\n\n", selectedProvider.KeyURL)
+	fmt.Fprint(os.Stderr, "  Press Enter to open the API key page in your browser... ")
+	_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 	openBrowser(selectedProvider.KeyURL)
-	if err := ui.Input("  API key (paste and press Enter)", &keyInput); err != nil {
+	if err := ui.Input("  Paste your API key and press Enter to save", &keyInput); err != nil {
 		_ = onboarding.MarkOnboardingSkipped()
 		if consent != nil && consent.Enabled && consent.ClientID != "" {
 			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
@@ -2183,10 +2191,24 @@ func configOnboarding() error {
 		}
 		return fmt.Errorf("no API key provided. Run 'promptctl config' to try again")
 	}
-	cfg.APIKeys[selectedProviderKey] = strings.TrimSpace(keyInput)
-	fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
+	if err := llm.SetAPIKey(selectedProviderKey, strings.TrimSpace(keyInput)); err != nil {
+		_ = onboarding.MarkOnboardingSkipped()
+		if consent != nil && consent.Enabled && consent.ClientID != "" {
+			go analytics.SendEvent(consent.ClientID, "onboarding_skipped", nil)
+		}
+		return fmt.Errorf("saving API key: %w", err)
+	}
+	if runtime.GOOS == "darwin" {
+		fmt.Printf("\n  ✓ API key saved to Keychain\n")
+	} else {
+		fmt.Printf("\n  ✓ API key stored securely (~/.promptctl/llm.json)\n")
+	}
 
 saveConfig:
+	cfg, err = llm.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
 	cfg.DefaultProvider = selectedProviderKey
 	cfg.DefaultModel = selectedModel.ID
 
