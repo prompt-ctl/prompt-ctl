@@ -28,7 +28,7 @@ import (
 	"github.com/oleg-koval/promptctl/prompt"
 )
 
-const version = "0.9.4"
+const version = "0.9.5"
 
 const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
 const versionCheckInterval = 24 * time.Hour
@@ -1669,7 +1669,7 @@ func sendPrompt() error {
   promptctl send <template-name> [--var=value ...] [--model=MODEL]
   promptctl send --create "your intent here" [--model=MODEL]
 
-Options (Gemini 3.1): --thinking-level=low|high, --media-resolution=low|medium|high
+Options: --min-score=N (0-100, refuse to send if prompt quality below N). Gemini 3.1: --thinking-level=low|high, --media-resolution=low|medium|high
 
 Examples:
   promptctl send review --file=auth.ts --model=claude-sonnet-4.5
@@ -1695,6 +1695,13 @@ Examples:
 	mediaResolution := vars["media-resolution"]
 	delete(vars, "thinking-level")
 	delete(vars, "media-resolution")
+	minScore := 0
+	if s, ok := vars["min-score"]; ok {
+		if n, err := strconv.Atoi(s); err == nil && n >= 0 && n <= 100 {
+			minScore = n
+		}
+		delete(vars, "min-score")
+	}
 	var completeOpts *llm.CompleteOptions
 	if thinkingLevel != "" || mediaResolution != "" {
 		completeOpts = &llm.CompleteOptions{ThinkingLevel: thinkingLevel, MediaResolution: mediaResolution}
@@ -1763,6 +1770,16 @@ Examples:
 		promptType = name
 	}
 
+	// Prompt quality score (for desired output: higher score = better prompt structure)
+	pq := prompt.ScorePromptQuality(renderedPrompt)
+	if minScore > 0 && pq.Score < minScore {
+		fmt.Fprintf(os.Stderr, "\n  Prompt quality: %d/100 (below --min-score=%d)\n", pq.Score, minScore)
+		if len(pq.Rules) > 0 {
+			fmt.Fprintf(os.Stderr, "  Issues: %s\n", strings.Join(pq.Rules, ", "))
+		}
+		return fmt.Errorf("prompt quality %d below minimum %d; improve prompt or run without --min-score", pq.Score, minScore)
+	}
+
 	// Show cost estimate before sending
 	est, err := llm.EstimateCost(renderedPrompt, modelID, promptType)
 	if err != nil {
@@ -1770,6 +1787,7 @@ Examples:
 	}
 
 	fmt.Fprintf(os.Stderr, "\n  Model:  %s\n", est.ModelName)
+	fmt.Fprintf(os.Stderr, "  Prompt quality: %d/100\n", pq.Score)
 	fmt.Fprintf(os.Stderr, "  Tokens: ~%s in / ~%s out (optimized)\n", formatNumSimple(est.InputTokens), formatNumSimple(est.EstOutputTokens))
 	fmt.Fprintf(os.Stderr, "  Without promptctl: ~$%.4f (typical rework)\n", est.WastedWithout)
 	fmt.Fprintf(os.Stderr, "  Est. cost: $%.4f (saves ~$%.4f)\n\n", est.TotalEstCost, est.Savings)
