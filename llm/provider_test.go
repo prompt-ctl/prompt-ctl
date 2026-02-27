@@ -201,7 +201,7 @@ func TestLoadConfig_WithFile(t *testing.T) {
 	data, _ := json.Marshal(Config{
 		DefaultProvider: "openai",
 		DefaultModel:    "gpt-5",
-		APIKeys:        map[string]string{"openai": "sk-test"},
+		APIKeys:         map[string]string{"openai": "sk-test"},
 	})
 	_ = os.WriteFile(path, data, 0600)
 	cfg, err := LoadConfig()
@@ -222,7 +222,7 @@ func TestSaveConfig(t *testing.T) {
 	cfg := &Config{
 		DefaultProvider: "anthropic",
 		DefaultModel:    "claude-sonnet-4-5-20250929",
-		APIKeys:        make(map[string]string),
+		APIKeys:         make(map[string]string),
 	}
 	err := SaveConfig(cfg)
 	if err != nil {
@@ -243,4 +243,3 @@ func TestComplete_NoAPIKey(t *testing.T) {
 		t.Fatal("expected error when no API key")
 	}
 }
-

@@ -86,4 +86,3 @@ func repoRoot(t *testing.T) string {
 	root := filepath.Clean(filepath.Join(cmdDir, ".."))
 	return root
 }
-

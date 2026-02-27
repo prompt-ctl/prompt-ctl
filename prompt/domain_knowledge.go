@@ -345,7 +345,7 @@ func detectDomain(lower string) string {
 	}{
 		// Healthcare - check first due to specific medical terminology
 		{[]string{
-			"patient", "medical", "health record", "diagnosis", "hipaa", "clinical", "healthcare", "hospital", 
+			"patient", "medical", "health record", "diagnosis", "hipaa", "clinical", "healthcare", "hospital",
 			"doctor", "clinic", "prescription", "telemedicine", "telehealth", "ehr", "emr", "radiology",
 			"pharmacy", "nursing", "surgery", "physician", "therapist", "dental", "veterinary", "wellness",
 			"mental health", "psychiatry", "cardiology", "oncology", "lab results", "medical imaging",
@@ -353,10 +353,10 @@ func detectDomain(lower string) string {
 			"appointment scheduling", "medical billing", "insurance claim", "icd-10", "cpt code", "medication",
 			"vaccine", "immunization", "vital signs", "blood pressure", "diagnostic", "symptom", "epidemic",
 		}, "healthcare"},
-		
+
 		// Fintech - specific financial terms
 		{[]string{
-			"payment", "trading", "banking", "transaction", "ledger", "invoice", "fintech", "wallet", 
+			"payment", "trading", "banking", "transaction", "ledger", "invoice", "fintech", "wallet",
 			"currency", "financial", "cryptocurrency", "blockchain", "exchange", "bitcoin", "ethereum",
 			"defi", "nft", "token", "payment gateway", "payment processor", "stripe", "paypal", "square",
 			"merchant", "pos", "point of sale", "credit card", "debit card", "wire transfer", "ach",
@@ -366,10 +366,10 @@ func detectDomain(lower string) string {
 			"accounting", "bookkeeping", "reconciliation", "settlement", "clearing house", "swift",
 			"crypto exchange", "trading platform", "algorithmic trading", "market data", "financial data",
 		}, "fintech"},
-		
+
 		// Gaming - specific game terms
 		{[]string{
-			"game", "player", "rpg", "multiplayer", "score", "level", "match", "tournament", "leaderboard", 
+			"game", "player", "rpg", "multiplayer", "score", "level", "match", "tournament", "leaderboard",
 			"achievement", "football", "soccer", "manager", "fps", "mmorpg", "moba", "rts game", "simulation",
 			"strategy game", "puzzle game", "casual game", "indie game", "aaa game", "game engine", "unity3d",
 			"unreal engine", "godot", "game design", "game mechanics", "gameplay", "game loop", "npc", "ai opponent",
@@ -379,10 +379,10 @@ func detectDomain(lower string) string {
 			"loot box", "microtransaction", "season pass", "dlc", "game monetization", "f2p", "gacha",
 			"sports game", "racing game", "fighting game", "platformer", "roguelike", "metroidvania",
 		}, "gaming"},
-		
+
 		// E-commerce - specific shopping terms (but not generic "listing")
 		{[]string{
-			"shop", "cart", "product catalog", "marketplace", "checkout", "ecommerce", "e-commerce", 
+			"shop", "cart", "product catalog", "marketplace", "checkout", "ecommerce", "e-commerce",
 			"inventory", "shopify", "woocommerce", "stripe payment", "magento", "bigcommerce", "amazon",
 			"ebay", "etsy", "online store", "webshop", "shopping cart", "order", "purchase", "buy",
 			"sell", "vendor", "merchant", "sku", "product variant", "stock", "warehouse", "fulfillment",
@@ -393,10 +393,10 @@ func detectDomain(lower string) string {
 			"storefront", "product page", "category page", "product image", "product description",
 			"shopping experience", "conversion rate", "abandoned cart", "checkout flow", "one-click buy",
 		}, "ecommerce"},
-		
+
 		// Mobile - iOS, Android, mobile-specific
 		{[]string{
-			"ios", "android", "mobile", "smartphone", "tablet", "app store", "play store", "react native", 
+			"ios", "android", "mobile", "smartphone", "tablet", "app store", "play store", "react native",
 			"flutter", "swift", "kotlin", "objective-c", "java android", "xamarin", "cordova", "phonegap", "ionic",
 			"mobile app", "native app", "hybrid app", "cross-platform", "mobile development", "mobile ui",
 			"mobile ux", "touch gesture", "swipe", "tap", "push notification", "local notification",
@@ -407,10 +407,10 @@ func detectDomain(lower string) string {
 			"testflight", "app distribution", "mobile analytics", "crash reporting", "firebase", "realm",
 			"mobile database", "sqlite", "core data", "app performance", "battery optimization", "memory",
 		}, "mobile"},
-		
+
 		// AI/ML - machine learning specific (check before general "train")
 		{[]string{
-			"ml model", "neural", "dataset", "predict", "machine learning", "deep learning", "classification", 
+			"ml model", "neural", "dataset", "predict", "machine learning", "deep learning", "classification",
 			"regression", "tensorflow", "pytorch", "recommendation system", "sentiment analysis", "nlp",
 			"natural language processing", "computer vision", "image recognition", "object detection",
 			"neural network", "cnn", "rnn", "lstm", "gru", "transformer", "bert", "gpt", "llm",
@@ -423,10 +423,10 @@ func detectDomain(lower string) string {
 			"embedding", "tokenization", "model deployment", "model serving", "mlops", "model monitoring",
 			"data labeling", "annotation", "training data", "test data", "validation set", "ai ethics",
 		}, "ai_ml"},
-		
+
 		// DevOps - infrastructure and deployment (before general "cluster")
 		{[]string{
-			"ci/cd", "pipeline", "kubernetes", "docker", "devops", "infrastructure", "terraform", "ansible", 
+			"ci/cd", "pipeline", "kubernetes", "docker", "devops", "infrastructure", "terraform", "ansible",
 			"jenkins", "helm", "deploy", "deployment", "k8s", "container", "containerization", "orchestration",
 			"gitlab ci", "github actions", "circleci", "travis ci", "build automation", "continuous integration",
 			"continuous deployment", "continuous delivery", "release management", "version control", "git",
@@ -438,10 +438,10 @@ func detectDomain(lower string) string {
 			"canary deployment", "rolling update", "service mesh", "istio", "consul", "vault", "secrets",
 			"configuration management", "docker compose", "dockerfile", "registry", "artifact repository",
 		}, "devops"},
-		
+
 		// SaaS - multi-tenant, subscription-based (check before general analytics)
 		{[]string{
-			"saas", "subscription", "tenant", "multi-tenant", "b2b", "b2c", "billing", "usage tracking", 
+			"saas", "subscription", "tenant", "multi-tenant", "b2b", "b2c", "billing", "usage tracking",
 			"api key", "customer churn", "retention", "mrr", "arr", "recurring revenue", "pricing tier",
 			"freemium", "trial", "seat", "per-user pricing", "usage-based", "metered billing", "invoice",
 			"payment processing", "subscription management", "customer lifecycle", "onboarding", "activation",
@@ -453,10 +453,10 @@ func detectDomain(lower string) string {
 			"data export", "api integration", "third-party integration", "marketplace", "app directory",
 			"cohort analysis", "funnel analysis", "conversion tracking", "retention analysis",
 		}, "saas"},
-		
+
 		// Education - learning platforms
 		{[]string{
-			"course", "quiz", "student", "curriculum", "lms", "education", "teach", "lesson", "assignment", 
+			"course", "quiz", "student", "curriculum", "lms", "education", "teach", "lesson", "assignment",
 			"grade", "learning platform", "e-learning", "online learning", "mooc", "virtual classroom",
 			"edtech", "educational technology", "learning management", "student information system", "sis",
 			"gradebook", "attendance", "enrollment", "class", "instructor", "teacher", "professor", "tutor",
@@ -467,10 +467,10 @@ func detectDomain(lower string) string {
 			"training program", "workshop", "webinar", "cohort", "peer review", "discussion forum",
 			"learning path", "competency", "skill development", "personalized learning", "adaptive learning",
 		}, "education"},
-		
+
 		// Social - social networking features (avoid conflicts with "post" in other contexts)
 		{[]string{
-			"feed", "profile", "follower", "following", "messaging", "social network", "friend", "like", 
+			"feed", "profile", "follower", "following", "messaging", "social network", "friend", "like",
 			"comment", "share", "social media", "timeline", "newsfeed", "activity stream", "notification",
 			"mention", "tag", "hashtag", "trending", "viral", "engagement", "reaction", "emoji", "story",
 			"status update", "live stream", "video sharing", "photo sharing", "album", "group", "community",
@@ -481,7 +481,7 @@ func detectDomain(lower string) string {
 			"people you may know", "discover", "explore", "influencer", "verified", "social login",
 			"social sharing", "social integration", "social widget", "social plugin", "embed", "share button",
 		}, "social"},
-		
+
 		// Analytics/Dashboard (maps to SaaS for business intelligence)
 		{[]string{
 			"dashboard", "analytics", "metrics", "chart", "visualization", "reporting", "kpi", "user behavior",

@@ -16,8 +16,8 @@ type Config struct {
 	GlobalConfigFile  string
 	// PromptsDir is where saved prompts (memory) are stored. Defaults to GlobalTemplateDir.
 	// Override with PROMPTCTL_PROMPTS_DIR or ~/.promptctl/prompts_dir file.
-	PromptsDir   string
-	DefaultVars  map[string]string
+	PromptsDir  string
+	DefaultVars map[string]string
 	// EnhanceURL is the optional LLM enhance API endpoint (e.g. Cloudflare Worker). Set with PROMPTCTL_ENHANCE_URL.
 	EnhanceURL string
 	// EnhanceMode is "llm" (default, uses hosted Worker) or "rule" (offline). Set with PROMPTCTL_ENHANCE.

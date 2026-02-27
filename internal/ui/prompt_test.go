@@ -44,3 +44,33 @@ func TestInput_WhenNotInteractive_ReturnsError(t *testing.T) {
 		t.Errorf("expect ErrNotInteractive, got %v", err)
 	}
 }
+
+func TestInputWithDefault_WhenNotInteractive_ReturnsDefault(t *testing.T) {
+	var s string
+	err := InputWithDefault("Name?", "fallback", &s)
+	if !errors.Is(err, ErrNotInteractive) {
+		t.Errorf("expect ErrNotInteractive, got %v", err)
+	}
+	if s != "fallback" {
+		t.Errorf("result = %q, want %q", s, "fallback")
+	}
+}
+
+func TestPassword_WhenNotInteractive_ReturnsErrNotInteractive(t *testing.T) {
+	var s string
+	err := Password("API key:", &s)
+	if err == nil {
+		t.Fatal("Password when not interactive should return error")
+	}
+	if !errors.Is(err, ErrNotInteractive) {
+		t.Errorf("expect ErrNotInteractive, got %v", err)
+	}
+}
+
+func TestPassword_WhenNotInteractive_DoesNotModifyResult(t *testing.T) {
+	s := "original"
+	_ = Password("API key:", &s)
+	if s != "original" {
+		t.Errorf("Password should not modify result on error; got %q", s)
+	}
+}

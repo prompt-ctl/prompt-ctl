@@ -185,8 +185,8 @@ func runScore() error {
 	}
 
 	type fileResult struct {
-		Path  string `json:"path"`
-		Score int    `json:"score"`
+		Path  string   `json:"path"`
+		Score int      `json:"score"`
 		Rules []string `json:"rules"`
 	}
 

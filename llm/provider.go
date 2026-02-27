@@ -16,12 +16,12 @@ import (
 
 // Provider represents a supported LLM provider
 type Provider struct {
-	Name      string
-	Models    []Model
-	BaseURL   string
-	EnvKey    string // environment variable name for API key
-	KeyURL    string // URL where users create API keys
-	Order     int    // display order in menus
+	Name    string
+	Models  []Model
+	BaseURL string
+	EnvKey  string // environment variable name for API key
+	KeyURL  string // URL where users create API keys
+	Order   int    // display order in menus
 }
 
 // Model represents a specific model with its pricing
@@ -49,26 +49,26 @@ func UnstructuredMultiplier(inputPerMTok float64) float64 {
 
 // CostEstimate holds token and cost breakdown for a prompt
 type CostEstimate struct {
-	InputTokens       int
-	EstOutputTokens   int     // estimated based on prompt complexity
-	InputCost         float64 // USD
-	EstOutputCost     float64 // USD
-	TotalEstCost      float64 // USD
-	ModelID           string
-	ModelName         string
-	WastedWithout     float64 // estimated cost of unstructured prompting (typically 2-4x)
-	Savings           float64 // money saved by using promptctl
-	SavingsPercent    float64
+	InputTokens     int
+	EstOutputTokens int     // estimated based on prompt complexity
+	InputCost       float64 // USD
+	EstOutputCost   float64 // USD
+	TotalEstCost    float64 // USD
+	ModelID         string
+	ModelName       string
+	WastedWithout   float64 // estimated cost of unstructured prompting (typically 2-4x)
+	Savings         float64 // money saved by using promptctl
+	SavingsPercent  float64
 }
 
 // CompletionResult holds the response from an LLM call
 type CompletionResult struct {
-	Content       string
-	InputTokens   int
-	OutputTokens  int
-	ActualCost    float64
-	Model         string
-	LatencyMs     int64
+	Content      string
+	InputTokens  int
+	OutputTokens int
+	ActualCost   float64
+	Model        string
+	LatencyMs    int64
 }
 
 // Config holds LLM configuration stored in ~/.promptctl/llm.json

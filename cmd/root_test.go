@@ -14,7 +14,7 @@ import (
 func TestExecute_Version(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
-	os.Args = []string{"promptctl", "version"}
+	os.Args = []string{"promptctl", "-v"}
 	err := Execute()
 	if err != nil {
 		t.Fatalf("Execute() err = %v", err)
@@ -261,14 +261,23 @@ func TestExecute_Help_ContainsNewUserSavingsHint(t *testing.T) {
 func TestExecute_Run_RequiredVarError_SuggestsVars(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
+	// Change cwd so findLocalConfig() starts from dir and finds dir/.promptctl,
+	// preventing it from walking up to the real user's ~/.promptctl.
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(origDir)
 	tplDir := filepath.Join(dir, ".promptctl", "templates")
 	_ = os.MkdirAll(tplDir, 0755)
 	_ = os.WriteFile(filepath.Join(tplDir, "review.yaml"), []byte("name: review\ndescription: x\nvariables:\n  - name: file\n    required: true\nbody: |\n  x"), 0644)
-	defer os.Unsetenv("HOME")
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 	os.Args = []string{"promptctl", "run", "review"}
-	err := Execute()
+	err = Execute()
 	if err == nil {
 		t.Fatal("Execute() run review without --file should error")
 	}

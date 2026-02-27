@@ -122,6 +122,13 @@ func Execute() error {
 		return runScore()
 	case "fix":
 		return runFix()
+	case "experiment", "exp":
+
+		if len(os.Args) > 2 && os.Args[2] == "optimize" {
+			return runOptimize()
+		}
+
+		return runExperiment()
 	case "version", "-v", "--version":
 		fmt.Printf("promptctl v%s\n", version)
 		return nil
@@ -150,6 +157,8 @@ PROMPT ENGINEERING:
   run <n> [vars]   Run a prompt template (alias: r)
   send <n> [vars]  Run template and send to LLM (alias: s)
   cost <n> [vars]  Estimate cost before sending
+  experiment <n> [vars]  Benchmark template across models (alias: exp)
+  experiment optimize <n>  Generate prompt variants and keep best
   list                List all available templates (alias: ls)
 
 TEMPLATE MANAGEMENT:
@@ -1026,7 +1035,8 @@ func versionLess(a, b string) bool {
 	return false
 }
 
-// parseVars extracts --key=value pairs from args
+// parseVars extracts --key=value pairs and boolean flags from args
+// Boolean flags (like --record) get an empty string value
 func parseVars(args []string) map[string]string {
 	vars := make(map[string]string)
 	for _, arg := range args {
@@ -1034,12 +1044,14 @@ func parseVars(args []string) map[string]string {
 			parts := strings.SplitN(strings.TrimPrefix(arg, "--"), "=", 2)
 			if len(parts) == 2 {
 				vars[parts[0]] = parts[1]
+			} else {
+				// Boolean flag (no equals sign) - set empty string as value
+				vars[parts[0]] = ""
 			}
 		}
 	}
 	return vars
 }
-
 func indexOf(slice []string, s string) int {
 	for i, v := range slice {
 		if v == s {
@@ -1641,11 +1653,11 @@ func copyToClipboard(text string) error {
 		name string
 		args []string
 	}{
-		{"pbcopy", nil},                                    // macOS
-		{"xclip", []string{"-selection", "clipboard"}},     // Linux X11
-		{"xsel", []string{"--clipboard", "--input"}},       // Linux X11 alt
-		{"wl-copy", nil},                                   // Wayland
-		{"clip", nil},                                      // Windows
+		{"pbcopy", nil}, // macOS
+		{"xclip", []string{"-selection", "clipboard"}}, // Linux X11
+		{"xsel", []string{"--clipboard", "--input"}},   // Linux X11 alt
+		{"wl-copy", nil}, // Wayland
+		{"clip", nil},    // Windows
 	}
 	for _, tool := range tools {
 		path, err := findExecutable(tool.name)
@@ -2444,8 +2456,8 @@ func newExecCommand(name string, args ...string) *execCmd {
 }
 
 type execCmd struct {
-	name string
-	args []string
+	name  string
+	args  []string
 	Stdin io.Reader
 }
 

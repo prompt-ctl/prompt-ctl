@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,11 @@ import (
 
 	"github.com/oleg-koval/promptctl/config"
 )
+
+type TemplateMeta struct {
+	Current  string   `json:"current"`
+	Versions []string `json:"versions"`
+}
 
 // Variable represents a template variable
 type Variable struct {
@@ -128,6 +134,7 @@ func LoadTemplate(name string, cfg *config.Config) (*Template, error) {
 	if !IsValidTemplateName(name) {
 		return nil, fmt.Errorf("invalid template name: %q", name)
 	}
+
 	// Check local first, then global
 	dirs := []struct {
 		dir     string
@@ -138,8 +145,30 @@ func LoadTemplate(name string, cfg *config.Config) (*Template, error) {
 	}
 
 	for _, d := range dirs {
+
+		// --- Versioned folder support ---
+		folder := filepath.Join(d.dir, name)
+		metaPath := filepath.Join(folder, "meta.json")
+
+		if _, statErr := os.Stat(metaPath); statErr == nil {
+
+			data, readErr := os.ReadFile(metaPath)
+			if readErr != nil {
+				return nil, fmt.Errorf("reading meta.json: %w", readErr)
+			}
+
+			var meta TemplateMeta
+			if parseErr := json.Unmarshal(data, &meta); parseErr != nil {
+				return nil, fmt.Errorf("parsing meta.json: %w", parseErr)
+			}
+
+			versionPath := filepath.Join(folder, meta.Current+".yaml")
+			return parseTemplateFile(versionPath, d.isLocal)
+		}
+
+		// --- Legacy flat template fallback ---
 		path := filepath.Join(d.dir, name+".yaml")
-		if _, err := os.Stat(path); err == nil {
+		if _, statErr := os.Stat(path); statErr == nil {
 			return parseTemplateFile(path, d.isLocal)
 		}
 	}
@@ -249,8 +278,23 @@ body: |
   </file>
 
   <output_format>
-  Structure your response clearly with sections.
-  Be specific and reference line numbers where applicable.
+  Return strictly valid JSON with this structure:
+
+	{
+		"summary": "string",
+		"critical_issues": ["string"],
+		"performance": ["string"],
+		"maintainability": ["string"],
+		"line_suggestions": [
+			{
+				"line": number,
+				"issue": "string",
+				"suggested_fix": "string"
+			}
+		]
+	}
+
+No explanations outside JSON.
   </output_format>
 
   <constraints>
