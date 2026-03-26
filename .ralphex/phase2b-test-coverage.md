@@ -19,37 +19,37 @@ You are improving test coverage for promptctl from 38.7% to 80%+ before the open
 
 ### 2. Identify Coverage Gaps
 Analyze coverage for each package. For uncovered code:
-- [ ] `cmd/` - CLI commands
-  - [ ] Each command's Execute() method
-  - [ ] Error handling paths
-  - [ ] Flag validation
-  - [ ] Output formatting
-- [ ] `internal/template` - Template parsing & rendering
-  - [ ] YAML parsing edge cases
-  - [ ] Variable substitution with special characters
-  - [ ] Missing variables error handling
-  - [ ] Template file not found errors
-- [ ] `internal/config` - Config directory management
-  - [ ] Directory creation
-  - [ ] File permissions
-  - [ ] Config read/write errors
-  - [ ] Legacy config migration
-- [ ] `internal/ui` - User interaction
-  - [ ] Prompt user flow
-  - [ ] Input validation
-  - [ ] Error message formatting
-- [ ] `internal/agent` - LLM agent orchestration
-  - [ ] Agent initialization
-  - [ ] State transitions
-  - [ ] Error recovery
-- [ ] `llm/` - Provider integrations
-  - [ ] Anthropic provider: auth, streaming, error handling
-  - [ ] OpenAI provider: auth, streaming, error handling
-  - [ ] Token estimation
-  - [ ] Cost calculation
-- [ ] `prompt/` - Embedded templates
-  - [ ] Template loading
-  - [ ] Variable extraction from templates
+- [x] `cmd/` - CLI commands (23.5% coverage)
+  - [x] Each command's Execute() method — runOptimize, runFix, runScore, runExperiment, sendPrompt all 0%
+  - [x] Error handling paths — largely uncovered
+  - [x] Flag validation — configLLMFlags, parseVars partially covered
+  - [x] Output formatting — welcomeBoxLine, printUsage covered; most others 0%
+- [x] `internal/template` → mapped to `prompt/` package (80.6% coverage)
+  - [x] YAML parsing edge cases — extractField at 90%, some template parsing uncovered
+  - [x] Variable substitution with special characters — VariableNames 100%, MinimalTemplate 0%
+  - [x] Missing variables error handling — partially covered in template_test.go
+  - [x] Template file not found errors — needs testing
+- [x] `internal/config` → mapped to `config/` package (71.0% coverage)
+  - [x] Directory creation — covered
+  - [x] File permissions — covered
+  - [x] Config read/write errors — mostly covered, SaveCreateFormat at 0%
+  - [x] Legacy config migration — N/A (no migration code found)
+- [x] `internal/ui` - User interaction (20.3% coverage)
+  - [x] Prompt user flow — SelectOption 60%, Input 50%, Password 50%
+  - [x] Input validation — InputWithDefault 60%
+  - [x] Error message formatting — all color.go functions at 0%
+- [x] `internal/agent` - N/A (package does not exist in this project)
+  - [x] Agent initialization — N/A
+  - [x] State transitions — N/A
+  - [x] Error recovery — N/A
+- [x] `llm/` - Provider integrations (43.8% coverage)
+  - [x] Anthropic provider: callAnthropic 0%, auth/streaming uncovered
+  - [x] OpenAI provider: callOpenAICompatible 0%, callGemini 0%
+  - [x] Token estimation — EstimateTokens 100%, EstimateOutputTokens 100%
+  - [x] Cost calculation — EstimateCost 100%, FormatCostEstimate 100%
+- [x] `prompt/` - Embedded templates (80.6% coverage)
+  - [x] Template loading — ScaffoldTemplate 100%
+  - [x] Variable extraction from templates — VariableNames 100%, hasConcreteNoun 0%
 
 ### 3. Write Tests for Uncovered Paths
 For EACH uncovered code path, write tests covering:
