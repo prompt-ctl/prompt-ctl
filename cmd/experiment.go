@@ -175,13 +175,13 @@ func runExperimentWithClient(client llm.Client) error {
 		prompt.ScorePromptQuality(renderedPrompt).Score)
 
 	type result struct {
-		Model          string
-		AvgScore       int
-		AvgCost        float64
-		AvgLatency     int64
-		Failures       int
-		BaselineScore  int  // New field for baseline comparison
-		Diff           int  // New field for score diff
+		Model         string
+		AvgScore      int
+		AvgCost       float64
+		AvgLatency    int64
+		Failures      int
+		BaselineScore int // New field for baseline comparison
+		Diff          int // New field for score diff
 	}
 
 	var results []result
@@ -227,13 +227,13 @@ func runExperimentWithClient(client llm.Client) error {
 		diff := currentScore - baselineScore
 
 		results = append(results, result{
-			Model:          modelID,
-			AvgScore:       currentScore,
-			AvgCost:        currentCost,
-			AvgLatency:     currentLatency,
-			Failures:       currentFailures,
-			BaselineScore:  baselineScore,
-			Diff:           diff,
+			Model:         modelID,
+			AvgScore:      currentScore,
+			AvgCost:       currentCost,
+			AvgLatency:    currentLatency,
+			Failures:      currentFailures,
+			BaselineScore: baselineScore,
+			Diff:          diff,
 		})
 	}
 
