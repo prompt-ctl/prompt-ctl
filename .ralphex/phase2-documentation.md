@@ -14,33 +14,33 @@ You are creating comprehensive documentation for the open-source release of prom
 Create a killer README that sells the vision and enables quick start.
 
 **Structure:**
-- [ ] One-liner: "promptctl is a CLI for version control and testing of LLM prompt templates"
-- [ ] Problem statement: "Copy-paste prompts are unmaintainable. promptctl treats them like code."
-- [ ] Quick comparison table: promptctl vs alternatives (vs. LangChain, vs. Prompt.io, vs. PromptEngineering)
-- [ ] Installation section:
-  - [ ] Linux: apt, yum, pacman, snap, direct binary, go install
-  - [ ] macOS: brew, direct binary, go install
-  - [ ] Windows: direct binary, go install
-  - [ ] Include simple `curl | bash` one-liner if feasible
-- [ ] Quick start (5-min runnable example):
-  - [ ] `promptctl init` explanation
-  - [ ] Show a template YAML file
-  - [ ] Show how to use it: `promptctl review --file=src/auth.ts`
-  - [ ] Show actual output (fake realistic output if needed)
-- [ ] Feature showcase (with examples):
-  - [ ] Review templates (code review)
-  - [ ] Debug templates (error context)
-  - [ ] Architecture templates (design decisions)
-  - [ ] Commit templates (changelog generation)
-  - [ ] Custom templates (extensibility)
-- [ ] Roadmap section:
-  - [ ] v1.0.0 features (current)
-  - [ ] v1.1.0: prompt testing framework
-  - [ ] v2.0.0: cloud registry (paid)
-  - [ ] Open core strategy hint: "Core CLI is forever free. Cloud features coming soon."
-- [ ] Contributing section (link to CONTRIBUTING.md)
-- [ ] License (Apache 2.0)
-- [ ] Links: Website, Issues, Discussions
+- [x] One-liner: "promptctl is a CLI for version control and testing of LLM prompt templates"
+- [x] Problem statement: "Copy-paste prompts are unmaintainable. promptctl treats them like code."
+- [x] Quick comparison table: promptctl vs alternatives (vs. LangChain, vs. Prompt.io, vs. PromptEngineering)
+- [x] Installation section:
+  - [x] Linux: apt, yum, pacman, snap, direct binary, go install
+  - [x] macOS: brew, direct binary, go install
+  - [x] Windows: direct binary, go install
+  - [x] Include simple `curl | bash` one-liner if feasible
+- [x] Quick start (5-min runnable example):
+  - [x] `promptctl init` explanation
+  - [x] Show a template YAML file
+  - [x] Show how to use it: `promptctl review --file=src/auth.ts`
+  - [x] Show actual output (fake realistic output if needed)
+- [x] Feature showcase (with examples):
+  - [x] Review templates (code review)
+  - [x] Debug templates (error context)
+  - [x] Architecture templates (design decisions)
+  - [x] Commit templates (changelog generation)
+  - [x] Custom templates (extensibility)
+- [x] Roadmap section:
+  - [x] v1.0.0 features (current)
+  - [x] v1.1.0: prompt testing framework
+  - [x] v2.0.0: cloud registry (paid)
+  - [x] Open core strategy hint: "Core CLI is forever free. Cloud features coming soon."
+- [x] Contributing section (link to CONTRIBUTING.md)
+- [x] License (Apache 2.0)
+- [x] Links: Website, Issues, Discussions
 
 ### 2. Create docs/CONTRIBUTING.md
 Guide for developers who want to contribute.

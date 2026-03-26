@@ -1,43 +1,100 @@
 # promptctl
 
-A CLI tool that turns your prompt engineering knowledge into reusable, composable templates. Stop writing the same prompt structures over and over - define them once, use them everywhere.
+**A CLI for version control and testing of LLM prompt templates.**
 
-## Quick Start
+Copy-paste prompts are unmaintainable. They drift across projects, lose context, and resist collaboration. **promptctl treats prompts like code** - version them, template them, test them, and share them across your team.
 
+## Why promptctl?
+
+| | promptctl | LangChain | PromptLayer | Manual copy-paste |
+|---|---|---|---|---|
+| **Language-agnostic** | Yes (CLI) | Python/JS only | Web UI | N/A |
+| **Version control** | Git-native YAML | Framework-locked | Cloud-only | Manual |
+| **No vendor lock-in** | Any LLM provider | LangChain ecosystem | PromptLayer API | N/A |
+| **Offline capable** | Fully offline | Needs runtime | Needs cloud | Yes |
+| **Zero dependencies** | Single binary | pip/npm install | SaaS signup | N/A |
+| **CI/CD friendly** | Exit codes + JSON | Custom setup | API integration | Scripts |
+| **Cost** | Free forever (Apache 2.0) | Free (OSS) | Freemium | Free |
+
+## Installation
+
+**macOS:**
 ```bash
-# Build
-go build -o promptctl .
-
-# Install to your PATH
-go install .
-# or: cp promptctl /usr/local/bin/
-
-# Initialize with starter templates
-promptctl init
-
-# List available templates
-promptctl list
-
-# Review a file
-promptctl review --file=src/auth.ts
-
-# Debug with error context
-promptctl debug --file=src/api.ts --error="TypeError: Cannot read property 'id' of undefined"
-
-# Architecture decision
-promptctl arch --problem="Should we use event sourcing for the payments service?"
-
-# Generate commit message
-promptctl commit --changes="Added retry logic to API client with exponential backoff"
+brew tap oleg-koval/tap && brew install promptctl
 ```
 
-## How It Works
+**Linux / macOS / Windows (Go):**
+```bash
+go install github.com/oleg-koval/promptctl@latest
+```
 
-Templates live in `~/.promptctl/templates/` (global) or `.promptctl/templates/` (project-level). Each template is a YAML file that defines variables, metadata, and a prompt body with `{{.variable}}` placeholders.
+**From source:**
+```bash
+git clone https://github.com/oleg-koval/promptctl.git
+cd promptctl
+go build -o promptctl .
+sudo mv promptctl /usr/local/bin/
+```
 
-Project-level templates override global ones with the same name, so you can customize per-repo.
+**Direct binary download:**
+Grab the latest release for your platform from [GitHub Releases](https://github.com/oleg-koval/promptctl/releases).
+
+See [docs/INSTALL.md](docs/INSTALL.md) for detailed platform-specific instructions.
+
+## Quick Start (5 minutes)
+
+```bash
+# 1. Initialize promptctl with starter templates
+promptctl init
+
+# 2. Review a file using the built-in review template
+promptctl review --file=src/auth.ts
+```
+
+This loads `~/.promptctl/templates/review.yaml`, injects your file content, and outputs a structured prompt:
+
+```
+<context>
+You are an expert code reviewer specializing in security, performance,
+and maintainability.
+</context>
+
+<task>
+Review this file with focus on: general
+Identify issues by severity (critical, warning, suggestion).
+</task>
+
+<file name="auth.ts" language="ts">
+import express from 'express';
+...
+</file>
+
+<constraints>
+- Be specific: reference line numbers
+- Suggest fixes, not just problems
+- Prioritize security issues
+</constraints>
+```
+
+Pipe it to any LLM:
+
+```bash
+# Claude
+promptctl review --file=src/auth.ts | claude
+
+# OpenAI
+promptctl review --file=src/auth.ts | openai chat
+
+# Or send directly with built-in LLM support
+promptctl send review --file=src/auth.ts
+
+# Copy to clipboard for any AI chat
+promptctl cp review --file=src/auth.ts
+```
 
 ## Template Format
+
+Templates are YAML files with `{{.variable}}` placeholders:
 
 ```yaml
 name: review
@@ -64,137 +121,166 @@ body: |
   </file>
 ```
 
-## Special Variables
-
-When you pass `--file=path/to/file`, these are auto-populated:
+When you pass `--file=path/to/file`, these variables are auto-populated:
 - `{{.file_content}}` - full file contents
 - `{{.file_name}}` - basename (e.g., `auth.ts`)
 - `{{.file_ext}}` - extension without dot (e.g., `ts`)
 
-When you pass `--dir=path/to/dir`:
-- `{{.dir_content}}` - directory tree listing
-- `{{.dir_name}}` - directory basename
+## Features
 
-## Commands
+### Starter Templates
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `run <name> [--var=val]` | Render a template (alias: `r`) | — |
-| `list` | List all templates (alias: `ls`) | — |
-| `add <name>` | Scaffold a new template | — |
-| `edit <name>` | Open in `$EDITOR` | — |
-| `show <name>` | Display template content and metadata | — |
-| `copy <name> [--var=val]` | Copy rendered prompt to clipboard (alias: `cp`) | — |
-| `vars <name>` | Show required/optional variables | — |
-| `init` | Set up global config with starter templates | — |
-| `score [dirs]` | Score prompt files (0–100) by structure, clarity, constraints, persona; CI-friendly exit codes and `--format=json` | `promptctl score prompts/` |
-| `fix [dirs]` | Apply fixes to low-scoring prompt files (use `--dry-run` to preview) | `promptctl fix --dry-run prompts/` |
-
-Shorthand: `promptctl review --file=x.ts` is the same as `promptctl run review --file=x.ts`.
-
-## Starter Templates
-
-`promptctl init` creates these out of the box:
+`promptctl init` ships with templates for common workflows:
 
 - **review** - Code review (security, performance, maintainability)
-- **debug** - Systematic bug analysis and fix suggestions
+- **debug** - Systematic bug analysis with error context
 - **arch** - Architecture decision records with trade-off analysis
 - **commit** - Conventional commit message generation
 - **explain** - Code explanation at configurable depth levels
 
-## Piping to LLMs
+### Custom Templates
 
-The real power is piping output directly to an LLM CLI:
-
-```bash
-# With Anthropic's Claude CLI
-promptctl review --file=src/auth.ts | claude
-
-# With OpenAI
-promptctl review --file=src/auth.ts | openai chat
-
-# Copy to clipboard for pasting into any AI chat
-promptctl cp review --file=src/auth.ts
-```
-
-## Enhance mode
-
-By default, `promptctl create "your intent"` uses the **hosted LLM enhancer** (no env or keys needed). **Your Claude/OpenAI API key is not used for create** — it is only used for `promptctl send` and `promptctl cost`. The hosted enhancer uses its own model. To use the offline rule-based enhancer instead:
+Build your own templates for any workflow:
 
 ```bash
-export PROMPTCTL_ENHANCE=rule
-promptctl create "review my auth code"
-```
+# Create and edit
+promptctl add api-review
+promptctl edit api-review
 
-To point at your own Worker: `PROMPTCTL_ENHANCE_URL=https://your-worker.workers.dev` (see [worker/](worker/)). The URL must use HTTPS. The default hosted Worker applies request limits (e.g. 4000 chars intent, 32 KiB body) and optional analytics.
+# Use it
+promptctl run api-review --file=routes.ts
 
-**Quality score and tuning**
-When using the LLM enhancer, a **quality score (0–100)** is printed to stderr. It measures fidelity (your specific terms preserved in the output), absence of duplicate sections, and required structure. Use `promptctl create "intent" --score` to show the score for rule-based enhance too. If the score is low or the output is too generic, try: (1) `PROMPTCTL_ENHANCE=rule` for long or detailed intents (no LLM), or (2) shorten the intent and add specifics in a follow-up.
-
-**`promptctl score` (CI)** — Score prompt files in given dirs (default: current dir). Exit codes: **0** = all files ≥ threshold; **1** = at least one below threshold or no files found; **2** = usage/config error. Use `--min-score=N` (default 80) and `--format=json` for machine-readable output (`files`, `min_score`, `ok`).
-
-**Security & configuration**
-- Do not commit API keys or webhook URLs; use environment variables or Cloudflare secrets.
-- Prefer interactive `promptctl config` or setting the provider’s env var (e.g. `ANTHROPIC_API_KEY`) so the key is not stored in shell history. Using `promptctl config --api-key=sk-...` on the command line can expose the key in history.
-- Paths for `--file` and `--dir` must be under the current working directory (path traversal is rejected).
-
-## Interactive TUI and analytics
-
-When you run promptctl in a **terminal** (TTY), you get interactive prompts: select provider/model from lists, confirm dialogs, and optional rating/save after `create`. When output is **piped** or in CI, behavior is non-interactive and plain (no colors, no prompts).
-
-**Anonymous analytics (optional)**  
-The first time an event would be sent, promptctl asks: *Send anonymous usage stats to improve promptctl? (Y/n)*. Your choice is stored in `~/.promptctl/analytics.json`. Events (e.g. onboarding completion, model selected, prompt created/saved, ratings) are sent to Google Analytics 4 via the Measurement Protocol. To enable sending, set **`PROMPTCTL_GA4_SECRET`** in the environment where the CLI runs (create an API secret in GA4 Admin → Data Streams → your stream → Measurement Protocol API secrets). Without this env var, no events are sent.
-
-```bash
-export PROMPTCTL_GA4_SECRET=your_measurement_protocol_api_secret
-```
-
-## Project-Level Templates
-
-Create project-specific templates that override or extend global ones:
-
-```bash
-cd my-project
+# Project-local templates (committed to your repo)
 promptctl init --local
 promptctl add sprint-review --local
 ```
 
-This creates `.promptctl/templates/sprint-review.yaml` in your project root. Commit it to your repo for team-wide consistency.
+Project-level templates in `.promptctl/templates/` override global ones, so every repo can have its own prompt conventions.
 
-## Building Custom Templates
+### Prompt Engineering from Intent
 
-```bash
-# Scaffold a new template
-promptctl add my-template
-
-# Edit it
-promptctl edit my-template
-
-# Test it
-promptctl show my-template
-promptctl run my-template --file=test.ts
-```
-
-Template tips:
-- Use XML tags (`<context>`, `<task>`, `<constraints>`) for structure - Claude responds well to these
-- Put the most important instructions early in the prompt
-- Use `{{if .var}}...{{end}}` for optional sections
-- Keep constraints specific and actionable
-
-## Cross-Platform
-
-Build for any platform:
+Transform raw intent into structured prompts:
 
 ```bash
-# macOS (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o promptctl-darwin-arm64 .
-
-# macOS (Intel)
-GOOS=darwin GOARCH=amd64 go build -o promptctl-darwin-amd64 .
-
-# Windows
-GOOS=windows GOARCH=amd64 go build -o promptctl.exe .
-
-# Linux
-GOOS=linux GOARCH=amd64 go build -o promptctl-linux-amd64 .
+promptctl create "review my authentication code for security holes"
 ```
+
+This uses an AI enhancer to expand your intent into a well-structured prompt with context, task, constraints, and output format. A quality score (0-100) is printed so you know how good the result is.
+
+### Prompt Scoring and Fixing (CI-ready)
+
+Score your prompt files for quality:
+
+```bash
+# Score all prompts in a directory
+promptctl score prompts/
+# Output: each file scored 0-100 on structure, clarity, constraints, persona
+
+# CI gate: fail if any prompt scores below 80
+promptctl score --min-score=80 prompts/
+
+# Machine-readable output
+promptctl score --format=json prompts/
+
+# Auto-fix low-scoring prompts
+promptctl fix prompts/
+promptctl fix --dry-run prompts/  # preview changes first
+```
+
+### Experimentation
+
+Benchmark templates across models and optimize:
+
+```bash
+# Compare a template across different models
+promptctl experiment review --file=auth.ts
+
+# Auto-generate variants and keep the best
+promptctl experiment optimize review
+```
+
+### LLM Integration
+
+Send prompts directly to LLMs without leaving the terminal:
+
+```bash
+# Configure your provider
+promptctl config --provider=anthropic
+# (prompts for API key interactively)
+
+# Send and get a response
+promptctl send review --file=src/auth.ts
+
+# Compare costs across models
+promptctl cost review --file=main.go --compare
+
+# See potential annual savings from structured prompts
+promptctl savings
+```
+
+Supported providers: Anthropic (Claude), OpenAI (GPT).
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `create "intent"` | Transform raw intent into a structured prompt (alias: `c`) |
+| `run <name> [--var=val]` | Render a template (alias: `r`) |
+| `send <name> [--var=val]` | Render and send to LLM (alias: `s`) |
+| `cost <name> [--var=val]` | Estimate cost before sending |
+| `experiment <name>` | Benchmark template across models (alias: `exp`) |
+| `list` | List all available templates (alias: `ls`) |
+| `add <name>` | Create a new prompt template |
+| `edit <name>` | Open template in `$EDITOR` |
+| `show <name>` | Display template content and metadata |
+| `copy <name>` | Copy rendered prompt to clipboard (alias: `cp`) |
+| `vars <name>` | Show variables required by a template |
+| `score [dirs]` | Score prompt files (0-100), CI-friendly |
+| `fix [dirs]` | Auto-fix low-scoring prompts |
+| `config` | View or set LLM provider configuration |
+| `models` | List supported models with pricing |
+| `init` | Initialize config and starter templates |
+
+Shorthand: `promptctl review --file=x.ts` is equivalent to `promptctl run review --file=x.ts`.
+
+## Roadmap
+
+### v1.0.0 (current)
+- Template engine with YAML format and variable substitution
+- Built-in starter templates (review, debug, arch, commit, explain)
+- Project-level template overrides
+- LLM integration (Anthropic, OpenAI) with cost estimation
+- Prompt scoring and auto-fix
+- Experimentation and optimization
+- AI-powered prompt creation from intent
+
+### v1.1.0: Prompt Testing Framework
+- Test templates against expected outputs
+- Regression testing for prompt changes
+- Model comparison benchmarks
+
+### v2.0.0: Cloud Platform
+- Web dashboard for prompt management
+- Prompt registry and versioning
+- Team collaboration and sharing
+- Usage analytics and insights
+
+> Core CLI is forever free and open source. Cloud features coming soon.
+
+## Contributing
+
+We welcome contributions! See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+- Developer setup and build instructions
+- Code style and PR process
+- How to add new commands and templates
+- Testing requirements
+
+## License
+
+[Apache License 2.0](LICENSE) - see [AUTHORS.md](AUTHORS.md) for contributors.
+
+## Links
+
+- **Website:** [prompt-ctl.com](https://prompt-ctl.com)
+- **Issues:** [GitHub Issues](https://github.com/oleg-koval/promptctl/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/oleg-koval/promptctl/discussions)
