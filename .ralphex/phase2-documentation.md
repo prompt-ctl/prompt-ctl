@@ -1,0 +1,230 @@
+# Promptctl Phase 2: Documentation Generation
+
+You are creating comprehensive documentation for the open-source release of promptctl, a Go CLI tool for prompt engineering templates.
+
+## Context
+- Repo: /Users/olegkoval/projects/personal/active/prompt-ctl.com/promptctl
+- Codebase status: Fully audited and cleaned (Phase 1 complete)
+- Goal: Generate production-ready documentation before public launch
+- Target: Developers unfamiliar with promptctl should be able to install and use it in 5 minutes
+
+## Tasks
+
+### 1. Update README.md (Critical - Most Important)
+Create a killer README that sells the vision and enables quick start.
+
+**Structure:**
+- [ ] One-liner: "promptctl is a CLI for version control and testing of LLM prompt templates"
+- [ ] Problem statement: "Copy-paste prompts are unmaintainable. promptctl treats them like code."
+- [ ] Quick comparison table: promptctl vs alternatives (vs. LangChain, vs. Prompt.io, vs. PromptEngineering)
+- [ ] Installation section:
+  - [ ] Linux: apt, yum, pacman, snap, direct binary, go install
+  - [ ] macOS: brew, direct binary, go install
+  - [ ] Windows: direct binary, go install
+  - [ ] Include simple `curl | bash` one-liner if feasible
+- [ ] Quick start (5-min runnable example):
+  - [ ] `promptctl init` explanation
+  - [ ] Show a template YAML file
+  - [ ] Show how to use it: `promptctl review --file=src/auth.ts`
+  - [ ] Show actual output (fake realistic output if needed)
+- [ ] Feature showcase (with examples):
+  - [ ] Review templates (code review)
+  - [ ] Debug templates (error context)
+  - [ ] Architecture templates (design decisions)
+  - [ ] Commit templates (changelog generation)
+  - [ ] Custom templates (extensibility)
+- [ ] Roadmap section:
+  - [ ] v1.0.0 features (current)
+  - [ ] v1.1.0: prompt testing framework
+  - [ ] v2.0.0: cloud registry (paid)
+  - [ ] Open core strategy hint: "Core CLI is forever free. Cloud features coming soon."
+- [ ] Contributing section (link to CONTRIBUTING.md)
+- [ ] License (Apache 2.0)
+- [ ] Links: Website, Issues, Discussions
+
+### 2. Create docs/CONTRIBUTING.md
+Guide for developers who want to contribute.
+
+**Sections:**
+- [ ] Developer setup
+  - [ ] Go version requirement (1.22+)
+  - [ ] Clone and setup: git clone, cd promptctl, go build -o promptctl .
+  - [ ] Dependencies: go mod download, go mod verify
+- [ ] Running the project
+  - [ ] Build: `go build -o promptctl .`
+  - [ ] Run: `./promptctl --help`
+  - [ ] Tests: `go test ./...`
+  - [ ] Coverage: `go test -cover ./...`
+- [ ] Code style
+  - [ ] gofmt: run before commit
+  - [ ] go vet: must pass
+  - [ ] Naming conventions (CamelCase, unexported prefix)
+  - [ ] Error handling best practices
+- [ ] PR process
+  - [ ] Fork repo, create feature branch
+  - [ ] Commit message format: "feat: ...", "fix: ...", "chore: ..."
+  - [ ] Tests required for new features
+  - [ ] PR description should reference issue
+  - [ ] CI must pass before merge
+- [ ] Testing requirements
+  - [ ] Unit tests for new functions
+  - [ ] Integration tests for CLI commands
+  - [ ] Example: how to test a new command
+- [ ] Adding a new command
+  - [ ] Create file in cmd/ (e.g., cmd/mycmd.go)
+  - [ ] Implement Execute() method
+  - [ ] Add tests in cmd/mycmd_test.go
+  - [ ] Update root.go to register command
+  - [ ] Add to README quick reference
+- [ ] Reporting issues
+  - [ ] Bug report template
+  - [ ] Feature request template
+  - [ ] Please include: OS, Go version, promptctl version
+
+### 3. Create docs/INSTALL.md
+Platform-specific installation instructions.
+
+**Sections:**
+- [ ] Quick install (copy-paste for lazy users):
+  - [ ] macOS: `brew install prompt-ctl/tap/promptctl`
+  - [ ] Linux: `snap install promptctl`
+  - [ ] Windows: Direct binary download or `choco install promptctl`
+  - [ ] Universal: `go install github.com/prompt-ctl/prompt-ctl@latest`
+- [ ] Linux detailed:
+  - [ ] Ubuntu/Debian: APT repository or direct .deb download
+  - [ ] Fedora/RHEL: yum/dnf repository
+  - [ ] Arch Linux: pacman or AUR
+  - [ ] Alpine: apk (if available)
+  - [ ] Snap: universal snap package
+  - [ ] Direct binary: .tar.gz download and PATH setup
+  - [ ] Verify: `promptctl version`
+- [ ] macOS detailed:
+  - [ ] Homebrew: `brew tap prompt-ctl/tap` + `brew install promptctl`
+  - [ ] Direct binary: download from GitHub releases
+  - [ ] Apple Silicon note: Built for both Intel and ARM
+  - [ ] Verify: `promptctl version`
+- [ ] Windows detailed:
+  - [ ] Direct binary: download .zip from GitHub releases
+  - [ ] Add to PATH: environment variable setup
+  - [ ] Chocolatey (if available): `choco install promptctl`
+  - [ ] WSL: Use Linux instructions
+  - [ ] Verify: `promptctl version`
+- [ ] From source:
+  - [ ] Requirements: Go 1.22+, git
+  - [ ] Build: `git clone ... && cd prompt-ctl && go build -o promptctl . && sudo mv promptctl /usr/local/bin/`
+  - [ ] Verify: `promptctl version`
+- [ ] Uninstall:
+  - [ ] macOS/Linux: `brew uninstall promptctl` or `rm /usr/local/bin/promptctl`
+  - [ ] Linux snap: `snap remove promptctl`
+  - [ ] Windows: Use Control Panel or delete binary
+
+### 4. Create docs/ARCHITECTURE.md
+Deep dive for contributors and curious users.
+
+**Sections:**
+- [ ] Overview diagram (ASCII art):
+  ```
+  promptctl CLI
+    ├── cmd/ (commands: review, fix, debug, arch, score, evaluate, commit, execute, variants, send)
+    ├── internal/ (core logic: template, provider, llm, agent)
+    ├── prompt/ (built-in templates)
+    ├── llm/ (provider integrations: anthropic, openai)
+    └── worker/ (cloud: analytics, webhooks)
+  ```
+- [ ] Core packages explained:
+  - [ ] `cmd/` - CLI commands using Cobra
+  - [ ] `internal/template` - YAML template parsing and variable substitution
+  - [ ] `internal/config` - Config directory management (~/.promptctl/)
+  - [ ] `llm/` - Provider abstraction (interface-based)
+  - [ ] `prompt/` - Embedded prompt templates (go:embed)
+- [ ] Template format:
+  - [ ] YAML structure (name, description, variables)
+  - [ ] {{.Variable}} syntax
+  - [ ] Template lookup (project-local overrides global)
+  - [ ] Example: code review template
+- [ ] How a command works:
+  - [ ] Example: `promptctl review --file=src/auth.ts`
+  - [ ] Step 1: Load template from ~/.promptctl/templates/review.yaml
+  - [ ] Step 2: Prompt user for variables (or use CLI flags)
+  - [ ] Step 3: Read file content
+  - [ ] Step 4: Render template with variables
+  - [ ] Step 5: Send to LLM provider
+  - [ ] Step 6: Stream response to terminal
+- [ ] Extending promptctl:
+  - [ ] Add a new command: create file in cmd/, implement interface
+  - [ ] Add a new provider: implement llm.Provider interface
+  - [ ] Add templates: drop YAML files in ~/.promptctl/templates/
+  - [ ] Add project templates: create .promptctl/templates/ in project
+- [ ] Testing architecture:
+  - [ ] Unit tests: cmd/*_test.go
+  - [ ] Mock providers: internal/mock/
+  - [ ] Integration tests: test templates end-to-end
+- [ ] Cloud components (for future):
+  - [ ] worker/: Cloudflare Worker for analytics
+  - [ ] Separate from core CLI (optional)
+- [ ] Dependencies:
+  - [ ] Cobra: CLI framework
+  - [ ] survey: Interactive prompts
+  - [ ] YAML: Template parsing
+  - [ ] No runtime LLM library required (just HTTP)
+
+### 5. Update examples/ directory
+Ensure all examples are working and well-documented.
+
+**Tasks:**
+- [ ] Review examples/ for accuracy
+- [ ] Test each example (promptctl review, debug, arch, etc.)
+- [ ] Add example prompt templates if missing
+- [ ] Document: what each example demonstrates
+- [ ] Add comments to YAML examples
+- [ ] Example: review template with security focus
+- [ ] Example: debug template with error context
+- [ ] Example: architecture template for decision recording
+
+### 6. Create docs/ROADMAP.md
+Public roadmap signals momentum and transparency.
+
+**Content:**
+- [ ] Current (v1.0.0): List current features
+- [ ] v1.1.0 (planned): Prompt testing framework
+  - [ ] Test templates against expected outputs
+  - [ ] Regression testing
+  - [ ] Model comparison
+- [ ] v2.0.0 (vision): Cloud platform
+  - [ ] Web dashboard
+  - [ ] Prompt registry & versioning
+  - [ ] Team collaboration
+  - [ ] Analytics
+  - [ ] Monetization note: "Cloud features will be paid, CLI is forever free"
+- [ ] Future ideas:
+  - [ ] IDE extensions (VSCode, JetBrains)
+  - [ ] Prompt optimization algorithms
+  - [ ] Multi-provider cost optimization
+- [ ] How to contribute to roadmap:
+  - [ ] Open discussions for ideas
+  - [ ] Vote on features
+  - [ ] Sponsor development
+
+### 7. Final README review
+- [ ] Verify all links work (CONTRIBUTING, INSTALL, ARCHITECTURE, ROADMAP)
+- [ ] Check formatting consistency
+- [ ] Verify example code is copy-paste ready
+- [ ] Test all installation instructions (at least on macOS)
+- [ ] Ensure tone is inviting and professional
+
+## Success Criteria
+- ✓ README is compelling and enables 5-min onboarding
+- ✓ CONTRIBUTING.md makes it easy for developers to add features
+- ✓ INSTALL.md covers all platforms clearly
+- ✓ ARCHITECTURE.md helps maintainers understand codebase
+- ✓ Examples all work and demonstrate real use cases
+- ✓ ROADMAP.md signals transparency and growth plans
+- ✓ All internal links work
+- ✓ No typos or formatting issues
+
+## Notes
+- README should be the "front door" - make it great
+- Use realistic examples that users can run immediately
+- Keep language clear for non-native English speakers
+- Emphasize ease of contribution (lower barrier to entry)
+- Roadmap transparency builds trust (especially around monetization)
