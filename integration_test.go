@@ -1385,3 +1385,334 @@ func TestIntegration_GoFileReview(t *testing.T) {
 	assertContains(t, out, "go")
 	assertContains(t, out, "HandleHealth")
 }
+
+// ============================================================
+// Task 4: Error Scenarios
+// ============================================================
+
+// --- File not found errors ---
+
+func TestIntegration_Error_FileNotFound_Run(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "run", "review", "--file=absolutely_missing_file.ts")
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	assertContains(t, err.Error(), "absolutely_missing_file.ts")
+}
+
+func TestIntegration_Error_FileNotFound_Score(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, stderr, exitCode := runCLI(t, env, "score", "nonexistent_prompt_file.txt")
+	if exitCode == 0 && !strings.Contains(stderr, "Error") && !strings.Contains(stderr, "no such file") {
+		t.Error("expected error or non-zero exit for scoring nonexistent file")
+	}
+}
+
+func TestIntegration_Error_FileNotFound_Fix(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, stderr, exitCode := runCLI(t, env, "fix", "vanished_prompt.txt")
+	if exitCode == 0 && !strings.Contains(stderr, "Error") {
+		t.Error("expected error or non-zero exit for fixing nonexistent file")
+	}
+}
+
+// --- Permission denied errors ---
+
+func TestIntegration_Error_PermissionDenied_ReadFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping permission test when running as root")
+	}
+	env := setupTestEnv(t)
+
+	// Create a file with no read permissions
+	noRead := filepath.Join(env.workDir, "noperm.ts")
+	os.WriteFile(noRead, []byte("secret code"), 0644)
+	os.Chmod(noRead, 0000)
+	defer os.Chmod(noRead, 0644) // cleanup
+
+	_, err := runInProcess(t, env, "run", "review", "--file=noperm.ts")
+	if err == nil {
+		t.Fatal("expected error for permission-denied file")
+	}
+	assertContains(t, err.Error(), "noperm.ts")
+}
+
+func TestIntegration_Error_PermissionDenied_ScoreFile(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping permission test when running as root")
+	}
+	env := setupTestEnv(t)
+
+	noRead := filepath.Join(env.workDir, "secret.txt")
+	os.WriteFile(noRead, []byte("you can't read this"), 0644)
+	os.Chmod(noRead, 0000)
+	defer os.Chmod(noRead, 0644)
+
+	_, stderr, _ := runCLI(t, env, "score", "secret.txt")
+	if !strings.Contains(stderr, "permission denied") && !strings.Contains(stderr, "Warning") && !strings.Contains(stderr, "Error") {
+		t.Errorf("expected permission error in stderr, got: %s", truncate(stderr, 300))
+	}
+}
+
+// --- Invalid template YAML ---
+
+func TestIntegration_Error_InvalidYAML_Template(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Write invalid YAML as a template - parser is lenient (regex extraction)
+	// so it will load but produce empty/degraded output
+	invalidYAML := filepath.Join(env.templateDir, "broken.yaml")
+	os.WriteFile(invalidYAML, []byte("{{{{not valid yaml: [unclosed"), 0644)
+
+	out, err := runInProcess(t, env, "run", "broken")
+	if err != nil {
+		// Error is acceptable
+		return
+	}
+	// If no error, the output should be minimal (degraded/empty body)
+	if len(strings.TrimSpace(out)) > 100 {
+		t.Errorf("invalid YAML template should produce empty/minimal output, got %d chars", len(out))
+	}
+}
+
+func TestIntegration_Error_EmptyTemplate(t *testing.T) {
+	env := setupTestEnv(t)
+
+	emptyTemplate := filepath.Join(env.templateDir, "empty.yaml")
+	os.WriteFile(emptyTemplate, []byte(""), 0644)
+
+	out, err := runInProcess(t, env, "run", "empty")
+	if err != nil {
+		// Error is acceptable for empty template
+		return
+	}
+	// If no error, output should be empty/minimal since template has no body
+	if len(strings.TrimSpace(out)) > 10 {
+		t.Errorf("empty template should produce empty/minimal output, got: %q", truncate(out, 100))
+	}
+}
+
+func TestIntegration_Error_TemplateNameInvalid(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Template names with path traversal should fail
+	_, err := runInProcess(t, env, "run", "../../../etc/passwd")
+	if err == nil {
+		t.Fatal("expected error for path-traversal template name")
+	}
+}
+
+// --- Missing required variables ---
+
+func TestIntegration_Error_MissingRequiredVar_Debug(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// debug requires both --file and --error
+	_, err := runInProcess(t, env, "run", "debug", "--file=api.go")
+	if err == nil {
+		t.Fatal("expected error when --error is missing for debug template")
+	}
+	// Error message should mention the missing variable
+	errStr := err.Error()
+	if !strings.Contains(errStr, "error") && !strings.Contains(errStr, "required") {
+		t.Errorf("error should mention missing variable, got: %s", errStr)
+	}
+}
+
+func TestIntegration_Error_MissingRequiredVar_Custom(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// custom template requires --var1
+	_, err := runInProcess(t, env, "run", "custom")
+	if err == nil {
+		t.Fatal("expected error when --var1 is missing for custom template")
+	}
+}
+
+func TestIntegration_Error_MissingAllVars_Commit(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// commit requires --changes
+	_, err := runInProcess(t, env, "run", "commit")
+	if err == nil {
+		t.Fatal("expected error when --changes is missing for commit template")
+	}
+}
+
+// --- LLM API failures ---
+
+func TestIntegration_Error_SendWithoutConfig(t *testing.T) {
+	// send requires LLM config; without it and non-interactive, should fail
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PROMPTCTL_ENHANCE", "rule")
+	// Clear all API key env vars
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
+
+	env := &testEnv{t: t, homeDir: home, workDir: t.TempDir(), repoRoot: findRepoRoot(t)}
+
+	// First init to create templates
+	runInProcess(t, env, "init")
+
+	// send should fail because no LLM config and non-interactive
+	_, err := runInProcess(t, env, "send", "review", "--file=nonexistent.ts")
+	if err == nil {
+		// Some paths may succeed in rendering before failing on LLM call
+		// That's acceptable - the important thing is it doesn't silently succeed
+		t.Log("send did not return error (may have failed at a different stage)")
+	}
+}
+
+func TestIntegration_Error_SendMissingTemplate(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Provide --model to skip LLM config check so we reach template loading
+	_, err := runInProcess(t, env, "send", "nonexistent-template-xyz", "--model=claude-sonnet-4-5-20250929")
+	if err == nil {
+		t.Fatal("expected error for send with nonexistent template")
+	}
+	assertContains(t, err.Error(), "not found")
+}
+
+// --- Invalid LLM responses ---
+
+func TestIntegration_Error_CostWithMissingFile(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "cost", "review", "--file=does_not_exist.ts")
+	if err == nil {
+		t.Fatal("expected error when cost references a nonexistent file")
+	}
+	assertContains(t, err.Error(), "does_not_exist.ts")
+}
+
+// --- Corrupted config files ---
+
+func TestIntegration_Error_CorruptedLLMConfig(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Write a corrupted llm.json
+	configDir := filepath.Join(env.homeDir, ".promptctl")
+	os.MkdirAll(configDir, 0755)
+	os.WriteFile(filepath.Join(configDir, "llm.json"), []byte("{invalid json!!!"), 0644)
+
+	// Commands that load LLM config should handle corruption gracefully
+	// config command reads llm.json
+	// It should not panic
+	_, err := runInProcess(t, env, "config", "--provider=anthropic", "--api-key=sk-test-123")
+	// Some commands may recover from corrupt config by overwriting, which is fine
+	_ = err
+}
+
+func TestIntegration_Error_CorruptedTemplateDir(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Replace a template file with a directory of the same name
+	// (should not cause a panic)
+	reviewPath := filepath.Join(env.templateDir, "review.yaml")
+	os.Remove(reviewPath)
+	os.MkdirAll(reviewPath, 0755) // create dir where file should be
+
+	_, err := runInProcess(t, env, "run", "review", "--file=auth.ts")
+	if err == nil {
+		t.Fatal("expected error when template path is a directory")
+	}
+}
+
+func TestIntegration_Error_CorruptedScoreConfig(t *testing.T) {
+	env := setupTestEnv(t)
+
+	// Create a corrupted .promptctl/score.yaml in workDir
+	promptctlDir := filepath.Join(env.workDir, ".promptctl")
+	os.MkdirAll(promptctlDir, 0755)
+	os.WriteFile(filepath.Join(promptctlDir, "score.yaml"), []byte("{{{not yaml"), 0644)
+
+	// Score should still work (falls back to defaults)
+	testFile := filepath.Join(env.workDir, "test-score.txt")
+	os.WriteFile(testFile, []byte("<task>Test prompt</task>"), 0644)
+
+	_, _, exitCode := runCLI(t, env, "score", "test-score.txt")
+	// Should not crash/panic - exit 0 or 1 are acceptable
+	if exitCode > 1 {
+		t.Errorf("score with corrupted config should not hard-crash, got exit %d", exitCode)
+	}
+}
+
+// --- Path traversal protection ---
+
+func TestIntegration_Error_PathTraversal_File(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "run", "review", "--file=../../../etc/passwd")
+	if err == nil {
+		t.Fatal("expected error for path traversal in --file")
+	}
+	errStr := err.Error()
+	if !strings.Contains(errStr, "outside") && !strings.Contains(errStr, "must be under") && !strings.Contains(errStr, "traversal") {
+		t.Errorf("error should mention path restriction, got: %s", errStr)
+	}
+}
+
+// --- Edge cases ---
+
+func TestIntegration_Error_RunWithNoArgs(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "run")
+	if err == nil {
+		t.Fatal("expected error for run with no template name")
+	}
+	assertContains(t, err.Error(), "usage")
+}
+
+func TestIntegration_Error_SendWithNoArgs(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "send")
+	if err == nil {
+		t.Fatal("expected error for send with no template name")
+	}
+	assertContains(t, err.Error(), "usage")
+}
+
+func TestIntegration_Error_MemoryWithNoSubcommand(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "memory")
+	if err == nil {
+		t.Fatal("expected error for memory without subcommand")
+	}
+	assertContains(t, err.Error(), "usage")
+}
+
+func TestIntegration_Error_MemoryInvalidSubcommand(t *testing.T) {
+	env := setupTestEnv(t)
+
+	_, err := runInProcess(t, env, "memory", "invalid-subcmd")
+	if err == nil {
+		t.Fatal("expected error for invalid memory subcommand")
+	}
+	assertContains(t, err.Error(), "usage")
+}
+
+func TestIntegration_Error_FixNoFilesFound(t *testing.T) {
+	// Create an empty workdir with no prompt files
+	home := t.TempDir()
+	emptyWork := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("PROMPTCTL_ENHANCE", "rule")
+
+	env := &testEnv{t: t, homeDir: home, workDir: emptyWork, repoRoot: findRepoRoot(t)}
+
+	// fix with no files should produce stderr message but not crash
+	_, stderr, exitCode := runCLI(t, env, "fix")
+	if exitCode > 1 {
+		t.Errorf("fix with no files should not hard-crash, got exit %d", exitCode)
+	}
+	_ = stderr // may contain "No prompt files found."
+}

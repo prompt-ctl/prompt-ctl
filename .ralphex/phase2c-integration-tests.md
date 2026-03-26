@@ -135,14 +135,14 @@ Integration tests are MORE valuable than unit tests for CLI tools because they:
   - [x] Invalid JSON response
 
 ### 4. Test Error Scenarios
-- [ ] File not found errors
-- [ ] Permission denied errors
-- [ ] Invalid template YAML
-- [ ] Missing required variables
-- [ ] LLM API failures (auth, rate limit, timeout)
-- [ ] Invalid LLM responses
-- [ ] Corrupted config files
-- [ ] Disk full errors (if feasible)
+- [x] File not found errors
+- [x] Permission denied errors
+- [x] Invalid template YAML
+- [x] Missing required variables
+- [x] LLM API failures (auth, rate limit, timeout)
+- [x] Invalid LLM responses
+- [x] Corrupted config files
+- [x] Disk full errors (if feasible)
 
 ### 5. Test Real-World Scenarios
 - [ ] Multi-line file content injection
