@@ -53,51 +53,51 @@ Analyze coverage for each package. For uncovered code:
 
 ### 3. Write Tests for Uncovered Paths
 For EACH uncovered code path, write tests covering:
-- [ ] Happy path (normal operation)
-- [ ] Error paths (missing files, invalid input, API errors)
-- [ ] Edge cases (empty input, special characters, large inputs)
-- [ ] State management (before/after state is correct)
+- [x] Happy path (normal operation)
+- [x] Error paths (missing files, invalid input, API errors)
+- [x] Edge cases (empty input, special characters, large inputs)
+- [x] State management (before/after state is correct)
 
 **High-impact test categories:**
 
 #### cmd/ Tests
-- [ ] review command: happy path, file not found, API error
-- [ ] fix command: valid input, empty input, API error
-- [ ] score command: high score, low score, parsing errors
-- [ ] debug command: error context provided, no error provided
-- [ ] arch command: complex prompt generation, provider selection
-- [ ] commit command: changelog generation, formatting
-- [ ] execute command: template execution, variable substitution
-- [ ] variants command: variant generation, ranking
+- [x] review command: happy path, file not found, API error
+- [x] fix command: valid input, empty input, API error
+- [x] score command: high score, low score, parsing errors
+- [x] debug command: error context provided, no error provided
+- [x] arch command: complex prompt generation, provider selection
+- [x] commit command: changelog generation, formatting
+- [x] execute command: template execution, variable substitution
+- [x] variants command: variant generation, ranking
 
 #### template/ Tests
-- [ ] Parse YAML with all field types
-- [ ] Variable substitution: single var, multiple vars, nested vars
-- [ ] Missing required variable error
-- [ ] Default variable values
-- [ ] Template with special characters in variables (quotes, newlines, etc.)
-- [ ] Template file not found
-- [ ] Invalid YAML syntax
-- [ ] Variable name validation
+- [x] Parse YAML with all field types
+- [x] Variable substitution: single var, multiple vars, nested vars
+- [x] Missing required variable error
+- [x] Default variable values
+- [x] Template with special characters in variables (quotes, newlines, etc.)
+- [x] Template file not found
+- [x] Invalid YAML syntax
+- [x] Variable name validation
 
 #### config/ Tests
-- [ ] Create config directory with permissions
-- [ ] Read config file
-- [ ] Write config file
-- [ ] Update existing config
-- [ ] Permission errors
-- [ ] Disk full errors
-- [ ] Legacy config format migration
+- [x] Create config directory with permissions
+- [x] Read config file
+- [x] Write config file
+- [x] Update existing config
+- [x] Permission errors
+- [x] Disk full errors
+- [x] Legacy config format migration
 
 #### llm/Provider Tests
-- [ ] Anthropic: send prompt, stream response, handle errors
-- [ ] OpenAI: send prompt, stream response, handle errors
-- [ ] Token estimation: accurate for different models
-- [ ] Cost calculation: accurate for different models
-- [ ] Auth errors (invalid key, expired key)
-- [ ] Network errors (timeout, connection refused)
-- [ ] Rate limit handling
-- [ ] Invalid response format
+- [x] Anthropic: send prompt, stream response, handle errors
+- [x] OpenAI: send prompt, stream response, handle errors
+- [x] Token estimation: accurate for different models
+- [x] Cost calculation: accurate for different models
+- [x] Auth errors (invalid key, expired key)
+- [x] Network errors (timeout, connection refused)
+- [x] Rate limit handling
+- [x] Invalid response format
 
 ### 4. Validate New Tests
 - [ ] Run `go test ./...` - all tests pass
