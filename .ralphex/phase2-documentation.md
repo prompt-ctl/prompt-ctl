@@ -122,7 +122,7 @@ Platform-specific installation instructions.
 Deep dive for contributors and curious users.
 
 **Sections:**
-- [ ] Overview diagram (ASCII art):
+- [x] Overview diagram (ASCII art):
   ```
   promptctl CLI
     ├── cmd/ (commands: review, fix, debug, arch, score, evaluate, commit, execute, variants, send)
@@ -131,42 +131,42 @@ Deep dive for contributors and curious users.
     ├── llm/ (provider integrations: anthropic, openai)
     └── worker/ (cloud: analytics, webhooks)
   ```
-- [ ] Core packages explained:
-  - [ ] `cmd/` - CLI commands using Cobra
-  - [ ] `internal/template` - YAML template parsing and variable substitution
-  - [ ] `internal/config` - Config directory management (~/.promptctl/)
-  - [ ] `llm/` - Provider abstraction (interface-based)
-  - [ ] `prompt/` - Embedded prompt templates (go:embed)
-- [ ] Template format:
-  - [ ] YAML structure (name, description, variables)
-  - [ ] {{.Variable}} syntax
-  - [ ] Template lookup (project-local overrides global)
-  - [ ] Example: code review template
-- [ ] How a command works:
-  - [ ] Example: `promptctl review --file=src/auth.ts`
-  - [ ] Step 1: Load template from ~/.promptctl/templates/review.yaml
-  - [ ] Step 2: Prompt user for variables (or use CLI flags)
-  - [ ] Step 3: Read file content
-  - [ ] Step 4: Render template with variables
-  - [ ] Step 5: Send to LLM provider
-  - [ ] Step 6: Stream response to terminal
-- [ ] Extending promptctl:
-  - [ ] Add a new command: create file in cmd/, implement interface
-  - [ ] Add a new provider: implement llm.Provider interface
-  - [ ] Add templates: drop YAML files in ~/.promptctl/templates/
-  - [ ] Add project templates: create .promptctl/templates/ in project
-- [ ] Testing architecture:
-  - [ ] Unit tests: cmd/*_test.go
-  - [ ] Mock providers: internal/mock/
-  - [ ] Integration tests: test templates end-to-end
-- [ ] Cloud components (for future):
-  - [ ] worker/: Cloudflare Worker for analytics
-  - [ ] Separate from core CLI (optional)
-- [ ] Dependencies:
-  - [ ] Cobra: CLI framework
-  - [ ] survey: Interactive prompts
-  - [ ] YAML: Template parsing
-  - [ ] No runtime LLM library required (just HTTP)
+- [x] Core packages explained:
+  - [x] `cmd/` - CLI commands using Cobra
+  - [x] `internal/template` - YAML template parsing and variable substitution
+  - [x] `internal/config` - Config directory management (~/.promptctl/)
+  - [x] `llm/` - Provider abstraction (interface-based)
+  - [x] `prompt/` - Embedded prompt templates (go:embed)
+- [x] Template format:
+  - [x] YAML structure (name, description, variables)
+  - [x] {{.Variable}} syntax
+  - [x] Template lookup (project-local overrides global)
+  - [x] Example: code review template
+- [x] How a command works:
+  - [x] Example: `promptctl review --file=src/auth.ts`
+  - [x] Step 1: Load template from ~/.promptctl/templates/review.yaml
+  - [x] Step 2: Prompt user for variables (or use CLI flags)
+  - [x] Step 3: Read file content
+  - [x] Step 4: Render template with variables
+  - [x] Step 5: Send to LLM provider
+  - [x] Step 6: Stream response to terminal
+- [x] Extending promptctl:
+  - [x] Add a new command: create file in cmd/, implement interface
+  - [x] Add a new provider: implement llm.Provider interface
+  - [x] Add templates: drop YAML files in ~/.promptctl/templates/
+  - [x] Add project templates: create .promptctl/templates/ in project
+- [x] Testing architecture:
+  - [x] Unit tests: cmd/*_test.go
+  - [x] Mock providers: internal/mock/
+  - [x] Integration tests: test templates end-to-end
+- [x] Cloud components (for future):
+  - [x] worker/: Cloudflare Worker for analytics
+  - [x] Separate from core CLI (optional)
+- [x] Dependencies:
+  - [x] Cobra: CLI framework
+  - [x] survey: Interactive prompts
+  - [x] YAML: Template parsing
+  - [x] No runtime LLM library required (just HTTP)
 
 ### 5. Update examples/ directory
 Ensure all examples are working and well-documented.

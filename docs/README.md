@@ -23,3 +23,4 @@
 | [plans/2026-02-26-persistent-benchmark-recording](plans/2026-02-26-persistent-benchmark-recording.md) | Persistent Benchmark Recording Implementation Plan |
 | [CONTRIBUTING](CONTRIBUTING.md) | Contributing to promptctl |
 | [INSTALL](INSTALL.md) | Installation Guide |
+| [ARCHITECTURE](ARCHITECTURE.md) | Architecture |
