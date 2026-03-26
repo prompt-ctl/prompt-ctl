@@ -11,11 +11,11 @@ You are improving test coverage for promptctl from 38.7% to 80%+ before the open
 ## Tasks
 
 ### 1. Generate Coverage Report
-- [ ] Run `go test -cover ./...` and capture per-package coverage
-- [ ] Run `go test -coverprofile=coverage.out ./...`
-- [ ] Run `go tool cover -html=coverage.out -o coverage.html`
-- [ ] Analyze which packages/functions are NOT covered
-- [ ] Create list of uncovered code paths by priority
+- [x] Run `go test -cover ./...` and capture per-package coverage
+- [x] Run `go test -coverprofile=coverage.out ./...`
+- [x] Run `go tool cover -html=coverage.out -o coverage.html`
+- [x] Analyze which packages/functions are NOT covered
+- [x] Create list of uncovered code paths by priority
 
 ### 2. Identify Coverage Gaps
 Analyze coverage for each package. For uncovered code:
