@@ -2,7 +2,10 @@
 
 All notable changes to promptctl are documented here.
 
-## [Unreleased]
+## [1.0.0] – 2026-02-27
+
+- Release v1.0.0 (d35bac4)
+- feat: add persistent benchmark recording (--record) (#10) (9ab48d0)
 
 ## [0.9.3] – 2026-02-19
 
