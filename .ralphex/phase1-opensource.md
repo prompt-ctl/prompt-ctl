@@ -68,10 +68,10 @@ Create the following markdown files:
 - [x] Ensure CI/CD (GitHub Actions) configuration exists and works
 
 ### 5. Legal & License
-- [ ] Create LICENSE file with Apache 2.0 license text
-- [ ] Create AUTHORS.md with copyright holder
-- [ ] Review CHANGELOG.md for accuracy
-- [ ] Verify version in cmd/root.go matches v1.0.0
+- [x] Create LICENSE file with Apache 2.0 license text
+- [x] Create AUTHORS.md with copyright holder
+- [x] Review CHANGELOG.md for accuracy
+- [x] Verify version in cmd/root.go matches v1.0.0
 
 ### 6. Final Verification
 - [ ] All files are readable (no permission issues)
