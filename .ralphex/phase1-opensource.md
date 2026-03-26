@@ -18,12 +18,12 @@ You are automating the open-source launch prep for promptctl, a Go CLI tool for 
 - Report findings and remove any found secrets
 
 ### 2. Code Cleanup
-- [ ] Review cmd/ directory - identify unfinished/experimental commands
-- [ ] Check internal/ for TODO comments, hacks, or incomplete features
-- [ ] Remove or mark as experimental any beta/alpha code
-- [ ] Delete temporary files: .DS_Store, coverage.out, .claude/, .cursor/
-- [ ] Verify dist/ is properly .gitignored (rebuilt on release)
-- [ ] Ensure node_modules is .gitignored
+- [x] Review cmd/ directory - identify unfinished/experimental commands
+- [x] Check internal/ for TODO comments, hacks, or incomplete features
+- [x] Remove or mark as experimental any beta/alpha code
+- [x] Delete temporary files: .DS_Store, coverage.out, .claude/, .cursor/
+- [x] Verify dist/ is properly .gitignored (rebuilt on release)
+- [x] Ensure node_modules is .gitignored
 
 ### 3. Generate Documentation
 Create the following markdown files:
