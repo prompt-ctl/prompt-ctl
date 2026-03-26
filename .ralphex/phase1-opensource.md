@@ -10,11 +10,11 @@ You are automating the open-source launch prep for promptctl, a Go CLI tool for 
 ## Tasks
 
 ### 1. Audit & Remove Secrets
-- [ ] Scan cmd/, internal/, config/ for hardcoded API keys, tokens, secrets
-- [ ] Check CASE_FOR_PROMPTCTL.md for sensitive info
-- [ ] Verify no .env files in git history
-- [ ] Scan .promptctl/ directory for credentials
-- [ ] Create .gitignore entries for sensitive files
+- [x] Scan cmd/, internal/, config/ for hardcoded API keys, tokens, secrets
+- [x] Check CASE_FOR_PROMPTCTL.md for sensitive info
+- [x] Verify no .env files in git history
+- [x] Scan .promptctl/ directory for credentials
+- [x] Create .gitignore entries for sensitive files
 - Report findings and remove any found secrets
 
 ### 2. Code Cleanup

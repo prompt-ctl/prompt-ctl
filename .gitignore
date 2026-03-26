@@ -27,8 +27,12 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
+
+# AI assistants
+.claude/
 
 # Secrets (worker, worker-alerts)
 .env
@@ -46,3 +50,6 @@ worker-try/.wrangler/
 
 
 /docs/emulated-runs
+
+# ralphex progress logs
+.ralphex/progress/
