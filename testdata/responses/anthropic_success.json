@@ -1,0 +1,17 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Here is my analysis of the code:\n\n1. The authentication flow looks correct but could benefit from rate limiting.\n2. Consider adding input validation for the token parameter.\n3. The error handling is solid but missing logging for failed attempts."
+    }
+  ],
+  "id": "msg_01XYZ",
+  "model": "claude-sonnet-4-5-20250929",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "type": "message",
+  "usage": {
+    "input_tokens": 1250,
+    "output_tokens": 340
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-def456",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": "gpt-5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Debug analysis complete. Root cause: null pointer dereference at line 42."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 3200,
+    "completion_tokens": 890,
+    "total_tokens": 4090
+  }
+}

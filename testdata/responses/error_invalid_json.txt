@@ -1,0 +1,1 @@
+This is not valid JSON and should cause a parse error when the client tries to unmarshal it as a response object.

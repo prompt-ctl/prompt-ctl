@@ -122,17 +122,17 @@ Integration tests are MORE valuable than unit tests for CLI tools because they:
   - [x] Verify: custom template paths saved
 
 ### 3. Mock LLM Provider Responses
-- [ ] Create `testdata/responses/` directory
-- [ ] Mock successful responses for:
-  - [ ] Anthropic Claude streaming response
-  - [ ] OpenAI GPT streaming response
-  - [ ] Token counts and cost estimates
-- [ ] Mock error responses:
-  - [ ] 401 Unauthorized (auth failure)
-  - [ ] 429 Rate Limited
-  - [ ] 500 Server Error
-  - [ ] Connection timeout
-  - [ ] Invalid JSON response
+- [x] Create `testdata/responses/` directory
+- [x] Mock successful responses for:
+  - [x] Anthropic Claude streaming response
+  - [x] OpenAI GPT streaming response
+  - [x] Token counts and cost estimates
+- [x] Mock error responses:
+  - [x] 401 Unauthorized (auth failure)
+  - [x] 429 Rate Limited
+  - [x] 500 Server Error
+  - [x] Connection timeout
+  - [x] Invalid JSON response
 
 ### 4. Test Error Scenarios
 - [ ] File not found errors

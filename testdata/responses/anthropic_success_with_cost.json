@@ -1,0 +1,17 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "The architecture decision should favor event sourcing for this use case."
+    }
+  ],
+  "id": "msg_02ABC",
+  "model": "claude-opus-4-6",
+  "role": "assistant",
+  "stop_reason": "end_turn",
+  "type": "message",
+  "usage": {
+    "input_tokens": 5000,
+    "output_tokens": 1500
+  }
+}

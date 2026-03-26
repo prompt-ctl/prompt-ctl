@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1700000000,
+  "model": "gpt-5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Based on the code review, here are the key findings:\n\n1. SQL injection vulnerability in the query builder.\n2. Missing CSRF token validation on form submissions.\n3. Hardcoded credentials should be moved to environment variables."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 980,
+    "completion_tokens": 275,
+    "total_tokens": 1255
+  }
+}
