@@ -1,0 +1,81 @@
+# review-security.yaml
+#
+# Security-focused code review template.
+# Examines code for OWASP Top 10 vulnerabilities, authentication flaws,
+# injection risks, and data exposure issues.
+#
+# Usage:
+#   promptctl run review-security --file=src/auth.ts
+#   promptctl run review-security --file=api/handler.go --focus=injection
+#
+# Output: Structured JSON with severity-ranked security findings.
+
+name: review-security
+description: Security-focused code review targeting OWASP Top 10 and common vulnerabilities
+
+variables:
+  - name: file
+    description: Path to the file to review for security issues
+    required: true
+  - name: focus
+    description: Specific security area to prioritize (e.g., injection, auth, xss, crypto)
+    default: all
+
+body: |
+  <context>
+  You are a senior application security engineer performing a focused
+  security review. Your goal is to identify vulnerabilities that could
+  be exploited in production. Prioritize findings by real-world impact.
+  </context>
+
+  <task>
+  Review the following code for security vulnerabilities.
+  {{if .focus}}Pay special attention to: {{.focus}}{{end}}
+
+  Check for:
+  - Injection flaws (SQL, command, LDAP, XPath)
+  - Broken authentication or session management
+  - Sensitive data exposure (secrets, PII, tokens in logs)
+  - XML/JSON external entity attacks
+  - Broken access control (IDOR, privilege escalation)
+  - Security misconfiguration
+  - Cross-site scripting (XSS)
+  - Insecure deserialization
+  - Known vulnerable dependencies
+  - Insufficient logging and monitoring
+  </task>
+
+  <file name="{{.file_name}}" language="{{.file_ext}}">
+  {{.file_content}}
+  </file>
+
+  <output_contract>
+  Return strictly valid JSON. No explanations outside JSON.
+  </output_contract>
+
+  <required_structure>
+  {
+    "risk_summary": "One-line overall risk assessment",
+    "risk_level": "low | medium | high | critical",
+    "vulnerabilities": [
+      {
+        "line": 0,
+        "category": "OWASP category (e.g., A01:2021 Broken Access Control)",
+        "severity": "low | medium | high | critical",
+        "description": "What the vulnerability is",
+        "exploit_scenario": "How an attacker could exploit this",
+        "fix": "Specific remediation steps"
+      }
+    ],
+    "positive_practices": ["Security practices done well in this code"],
+    "recommendations": ["General security improvements to consider"]
+  }
+  </required_structure>
+
+  <constraints>
+  - Only report real vulnerabilities, not theoretical ones
+  - Include line numbers for every finding
+  - Prioritize by exploitability, not just severity
+  - Suggest concrete fixes, not vague advice
+  - Use empty arrays if no issues found in a category
+  </constraints>

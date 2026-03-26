@@ -1,0 +1,86 @@
+# api-review.yaml
+#
+# Review API endpoint design for consistency, RESTful conventions,
+# error handling, and documentation quality.
+#
+# Usage:
+#   promptctl run api-review --file=api/users.go
+#   promptctl run api-review --file=routes/orders.ts --api_style=graphql
+#
+# Output: Structured JSON with API design findings and suggestions.
+
+name: api-review
+description: Review API endpoint design for conventions, consistency, and best practices
+
+variables:
+  - name: file
+    description: Path to the file containing API endpoint definitions
+    required: true
+  - name: api_style
+    description: API style (rest, graphql, grpc)
+    default: rest
+
+body: |
+  <context>
+  You are a senior API designer reviewing endpoint implementations.
+  Evaluate against {{.api_style}} best practices, focusing on real-world
+  usability for API consumers.
+  </context>
+
+  <task>
+  Review the API endpoints defined in this file.
+
+  Check for:
+  - Naming conventions (resource nouns, consistent pluralization)
+  - HTTP method usage (GET for reads, POST for creates, etc.)
+  - Status code correctness (201 for created, 404 for not found, etc.)
+  - Request/response payload structure
+  - Error response consistency
+  - Input validation and sanitization
+  - Pagination for list endpoints
+  - Authentication and authorization checks
+  - Rate limiting considerations
+  - API versioning
+  </task>
+
+  <file name="{{.file_name}}" language="{{.file_ext}}">
+  {{.file_content}}
+  </file>
+
+  <output_contract>
+  Return strictly valid JSON. No explanations outside JSON.
+  </output_contract>
+
+  <required_structure>
+  {
+    "endpoints_found": [
+      {
+        "method": "GET | POST | PUT | PATCH | DELETE",
+        "path": "/api/resource",
+        "line": 0
+      }
+    ],
+    "issues": [
+      {
+        "line": 0,
+        "category": "naming | method | status_code | validation | auth | error_handling | pagination | versioning",
+        "severity": "low | medium | high",
+        "description": "What is wrong",
+        "suggestion": "How to fix it"
+      }
+    ],
+    "missing_patterns": [
+      "Important API patterns not found in this file (e.g., pagination, error handling)"
+    ],
+    "overall_grade": "A | B | C | D | F",
+    "summary": "Brief assessment of the API design quality"
+  }
+  </required_structure>
+
+  <constraints>
+  - Evaluate against {{.api_style}} conventions specifically
+  - Focus on consumer experience, not just technical correctness
+  - Flag inconsistencies between endpoints in the same file
+  - Suggest concrete improvements with code examples where helpful
+  - Use empty arrays if no issues in a category
+  </constraints>

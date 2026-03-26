@@ -172,14 +172,14 @@ Deep dive for contributors and curious users.
 Ensure all examples are working and well-documented.
 
 **Tasks:**
-- [ ] Review examples/ for accuracy
-- [ ] Test each example (promptctl review, debug, arch, etc.)
-- [ ] Add example prompt templates if missing
-- [ ] Document: what each example demonstrates
-- [ ] Add comments to YAML examples
-- [ ] Example: review template with security focus
-- [ ] Example: debug template with error context
-- [ ] Example: architecture template for decision recording
+- [x] Review examples/ for accuracy
+- [x] Test each example (promptctl review, debug, arch, etc.)
+- [x] Add example prompt templates if missing
+- [x] Document: what each example demonstrates
+- [x] Add comments to YAML examples
+- [x] Example: review template with security focus
+- [x] Example: debug template with error context
+- [x] Example: architecture template for decision recording
 
 ### 6. Create docs/ROADMAP.md
 Public roadmap signals momentum and transparency.

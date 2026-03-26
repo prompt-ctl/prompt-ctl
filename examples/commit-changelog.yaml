@@ -1,0 +1,66 @@
+# commit-changelog.yaml
+#
+# Generate a conventional commit message and changelog entry from a diff.
+# Follows the Conventional Commits specification (https://www.conventionalcommits.org/).
+#
+# Usage:
+#   git diff --staged | promptctl run commit-changelog --diff=-
+#   promptctl run commit-changelog --diff="$(git diff HEAD~1)"
+#   promptctl run commit-changelog --diff="$(git diff HEAD~1)" --ticket=PROJ-123
+#
+# Output: Structured JSON with commit message and changelog entry.
+
+name: commit-changelog
+description: Generate conventional commit messages and changelog entries from diffs
+
+variables:
+  - name: diff
+    description: The git diff to analyze (use - for stdin)
+    required: true
+  - name: ticket
+    description: Issue or ticket reference (e.g., PROJ-123, GH-42)
+    default: ""
+
+body: |
+  <context>
+  You are a developer writing a commit message and changelog entry.
+  Follow the Conventional Commits specification strictly.
+  </context>
+
+  <task>
+  Analyze this diff and generate a commit message and changelog entry.
+
+  {{if .ticket}}Related ticket: {{.ticket}}{{end}}
+
+  Diff:
+  ```
+  {{.diff}}
+  ```
+  </task>
+
+  <output_contract>
+  Return strictly valid JSON. No explanations outside JSON.
+  </output_contract>
+
+  <required_structure>
+  {
+    "type": "feat | fix | refactor | docs | test | chore | perf | ci",
+    "scope": "Affected module or component (optional, empty string if none)",
+    "breaking": false,
+    "subject": "Imperative mood summary under 50 chars",
+    "body": "Detailed explanation of what changed and why (2-3 sentences)",
+    "commit_message": "Full formatted commit message ready to use",
+    "changelog_entry": "User-facing changelog line (e.g., - Added X for Y)",
+    "files_changed": ["List of files modified"],
+    "impact": "low | medium | high"
+  }
+  </required_structure>
+
+  <constraints>
+  - Use imperative mood ("add" not "added", "fix" not "fixed")
+  - Subject line must be under 50 characters
+  - Body should explain WHY, not just WHAT
+  - Breaking changes must set "breaking": true and prefix subject with !
+  - If a ticket is provided, include it in the commit message footer
+  - Changelog entry should be meaningful to end users
+  </constraints>
