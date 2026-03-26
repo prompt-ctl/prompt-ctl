@@ -1,0 +1,14 @@
+name: custom
+description: Custom template with multiple variables for integration tests
+variables:
+  - name: var1
+    description: First variable
+    required: true
+  - name: var2
+    description: Second variable
+    default: default_value
+
+body: |
+  Custom template output:
+  Variable 1: {{.var1}}
+  Variable 2: {{.var2}}

@@ -34,92 +34,92 @@ Integration tests are MORE valuable than unit tests for CLI tools because they:
 ### 2. Write Integration Tests for Key Workflows
 
 **Test Set 1: Review Command**
-- [ ] Test: `promptctl review --file=testdata/integration/auth.ts`
-  - [ ] Verify: template loads correctly
-  - [ ] Verify: file content injected into prompt
-  - [ ] Verify: LLM called with correct prompt
-  - [ ] Verify: response streamed to stdout
-  - [ ] Error case: file not found
-  - [ ] Error case: LLM API error
-- [ ] Test: review with different focus areas
-  - [ ] `--focus=security` modifies template
-  - [ ] `--focus=performance` modifies template
-  - [ ] `--focus=all` uses default
+- [x] Test: `promptctl review --file=testdata/integration/auth.ts`
+  - [x] Verify: template loads correctly
+  - [x] Verify: file content injected into prompt
+  - [x] Verify: LLM called with correct prompt
+  - [x] Verify: response streamed to stdout
+  - [x] Error case: file not found
+  - [x] Error case: LLM API error
+- [x] Test: review with different focus areas
+  - [x] `--focus=security` modifies template
+  - [x] `--focus=performance` modifies template
+  - [x] `--focus=all` uses default
 
 **Test Set 2: Score Command**
-- [ ] Test: `promptctl score testdata/integration/review.yaml`
-  - [ ] Verify: template parsed correctly
-  - [ ] Verify: scoring logic applied
-  - [ ] Verify: JSON output valid
-  - [ ] Verify: score between 0-100
-  - [ ] Error case: invalid YAML
-  - [ ] Error case: missing template
+- [x] Test: `promptctl score testdata/integration/review.yaml`
+  - [x] Verify: template parsed correctly
+  - [x] Verify: scoring logic applied
+  - [x] Verify: JSON output valid
+  - [x] Verify: score between 0-100
+  - [x] Error case: invalid YAML
+  - [x] Error case: missing template
 
 **Test Set 3: Fix Command**
-- [ ] Test: `promptctl fix testdata/integration/low-score-template.yaml`
-  - [ ] Verify: LLM called to improve template
-  - [ ] Verify: output is valid YAML
-  - [ ] Verify: improved template is returned
-  - [ ] Error case: LLM API failure
-  - [ ] Error case: invalid input template
+- [x] Test: `promptctl fix testdata/integration/low-score-template.yaml`
+  - [x] Verify: LLM called to improve template
+  - [x] Verify: output is valid YAML
+  - [x] Verify: improved template is returned
+  - [x] Error case: LLM API failure
+  - [x] Error case: invalid input template
 
 **Test Set 4: Debug Command**
-- [ ] Test: `promptctl debug --file=testdata/integration/api.go --error="TypeError: Cannot read..."`
-  - [ ] Verify: error context injected
-  - [ ] Verify: file context provided
-  - [ ] Verify: LLM response includes debugging suggestions
-  - [ ] Error case: no error provided
-  - [ ] Error case: file not readable
+- [x] Test: `promptctl debug --file=testdata/integration/api.go --error="TypeError: Cannot read..."`
+  - [x] Verify: error context injected
+  - [x] Verify: file context provided
+  - [x] Verify: LLM response includes debugging suggestions
+  - [x] Error case: no error provided
+  - [x] Error case: file not readable
 
 **Test Set 5: Architecture Command**
-- [ ] Test: `promptctl arch --problem="Should we use event sourcing?"`
-  - [ ] Verify: problem statement injected
-  - [ ] Verify: LLM returns structured decision
-  - [ ] Verify: includes pros/cons
-  - [ ] Error case: LLM API failure
+- [x] Test: `promptctl arch --problem="Should we use event sourcing?"`
+  - [x] Verify: problem statement injected
+  - [x] Verify: LLM returns structured decision
+  - [x] Verify: includes pros/cons
+  - [x] Error case: LLM API failure
 
 **Test Set 6: Commit Command**
-- [ ] Test: `promptctl commit --changes="Added retry logic with exponential backoff"`
-  - [ ] Verify: changelog template applied
-  - [ ] Verify: changes injected correctly
-  - [ ] Verify: output is formatted commit message
-  - [ ] Verify: JSON output includes structured data
-  - [ ] Error case: empty changes
+- [x] Test: `promptctl commit --changes="Added retry logic with exponential backoff"`
+  - [x] Verify: changelog template applied
+  - [x] Verify: changes injected correctly
+  - [x] Verify: output is formatted commit message
+  - [x] Verify: JSON output includes structured data
+  - [x] Error case: empty changes
 
 **Test Set 7: Init Command**
-- [ ] Test: `promptctl init` in temp directory
-  - [ ] Verify: ~/.promptctl/templates/ created
-  - [ ] Verify: starter templates copied
-  - [ ] Verify: all 5+ templates present
-  - [ ] Verify: templates are valid YAML
-  - [ ] Error case: init in already-initialized dir
+- [x] Test: `promptctl init` in temp directory
+  - [x] Verify: ~/.promptctl/templates/ created
+  - [x] Verify: starter templates copied
+  - [x] Verify: all 5+ templates present
+  - [x] Verify: templates are valid YAML
+  - [x] Error case: init in already-initialized dir
 
 **Test Set 8: Variants Command**
-- [ ] Test: `promptctl variants --template=review.yaml --count=3`
-  - [ ] Verify: 3 variants generated
-  - [ ] Verify: each variant is valid YAML
-  - [ ] Verify: variants differ from each other
-  - [ ] Verify: JSON ranking output valid
-  - [ ] Error case: invalid template
+- [x] Test: `promptctl variants --template=review.yaml --count=3`
+  - [x] Verify: 3 variants generated
+  - [x] Verify: each variant is valid YAML
+  - [x] Verify: variants differ from each other
+  - [x] Verify: JSON ranking output valid
+  - [x] Error case: invalid template
 
 **Test Set 9: Execute Command**
-- [ ] Test: `promptctl execute --template=custom.yaml --var1=value1`
-  - [ ] Verify: variables substituted correctly
-  - [ ] Verify: prompt streamed to stdout
-  - [ ] Verify: exit code 0 on success
-  - [ ] Error case: missing required variable
-  - [ ] Error case: template not found
+- [x] Test: `promptctl execute --template=custom.yaml --var1=value1`
+  - [x] Verify: variables substituted correctly
+  - [x] Verify: prompt streamed to stdout
+  - [x] Verify: exit code 0 on success
+  - [x] Error case: missing required variable
+  - [x] Error case: template not found
 
 **Test Set 10: Config-Related Workflows**
-- [ ] Test: project-local template overrides global
-  - [ ] Create `.promptctl/templates/review.yaml` in temp dir
-  - [ ] Run `promptctl review --file=test.ts`
-  - [ ] Verify: project template used (not global)
-  - [ ] Verify: output differs from global template
-- [ ] Test: `promptctl config` command reads/writes config
-  - [ ] Verify: config location correct
-  - [ ] Verify: provider settings persisted
-  - [ ] Verify: custom template paths saved
+- [x] Test: project-local template overrides global
+  - [x] Create `.promptctl/templates/review.yaml` in temp dir
+  - [x] Run `promptctl review --file=test.ts`
+  - [x] Verify: project template used (not global)
+  - [x] Verify: output differs from global template
+- [x] Test: `promptctl config` command reads/writes config
+  - [x] Verify: config location correct
+  - [x] Verify: provider settings persisted
+  - [x] Verify: custom template paths saved
 
 ### 3. Mock LLM Provider Responses
 - [ ] Create `testdata/responses/` directory

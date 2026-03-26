@@ -1,0 +1,25 @@
+name: commit
+description: Commit message generator template for integration tests
+variables:
+  - name: changes
+    description: Description of the changes made
+    required: true
+
+body: |
+  <context>
+  You are a git commit message generator.
+  </context>
+
+  <task>
+  Generate a commit message for the following changes:
+  {{.changes}}
+  </task>
+
+  <output_format>
+  Return a concise commit message following conventional commits format.
+  </output_format>
+
+  <constraints>
+  - Keep subject line under 72 characters
+  - Use imperative mood
+  </constraints>
