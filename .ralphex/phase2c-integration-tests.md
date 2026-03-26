@@ -19,17 +19,17 @@ Integration tests are MORE valuable than unit tests for CLI tools because they:
 ## Tasks
 
 ### 1. Create Integration Test Infrastructure
-- [ ] Create `integration_test.go` in repo root
-- [ ] Create `testdata/integration/` directory with:
-  - [ ] Sample files for testing (auth.ts, api.go, handler.py)
-  - [ ] Sample templates (review.yaml, debug.yaml, arch.yaml)
-  - [ ] Sample config files
-- [ ] Create test helper functions:
-  - [ ] `setupTestEnv()` - create temp directory with test files
-  - [ ] `cleanupTestEnv()` - cleanup temp directory
-  - [ ] `mockLLMServer()` - httptest server that mocks Anthropic/OpenAI
-  - [ ] `runPrompctl()` - execute promptctl CLI with args and capture output
-  - [ ] `assertOutput()` - verify CLI output contains expected text
+- [x] Create `integration_test.go` in repo root
+- [x] Create `testdata/integration/` directory with:
+  - [x] Sample files for testing (auth.ts, api.go, handler.py)
+  - [x] Sample templates (review.yaml, debug.yaml, arch.yaml)
+  - [x] Sample config files
+- [x] Create test helper functions:
+  - [x] `setupTestEnv()` - create temp directory with test files
+  - [x] `cleanupTestEnv()` - cleanup temp directory
+  - [x] `mockLLMServer()` - httptest server that mocks Anthropic/OpenAI
+  - [x] `runPrompctl()` - execute promptctl CLI with args and capture output
+  - [x] `assertOutput()` - verify CLI output contains expected text
 
 ### 2. Write Integration Tests for Key Workflows
 

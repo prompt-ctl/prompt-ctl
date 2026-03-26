@@ -1,0 +1,29 @@
+name: debug
+description: Debug assistant template for integration tests
+variables:
+  - name: file
+    description: Path to the file with the bug
+    required: true
+  - name: error
+    description: The error message
+    required: true
+
+body: |
+  <context>
+  You are a debugging assistant.
+  </context>
+
+  <task>
+  Debug the following error in the code.
+  Error: {{.error}}
+  </task>
+
+  <file name="{{.file_name}}" language="{{.file_ext}}">
+  {{.file_content}}
+  </file>
+
+  <output_format>
+  1. Root cause analysis
+  2. Fix suggestion
+  3. Prevention tips
+  </output_format>

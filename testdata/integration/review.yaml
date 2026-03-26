@@ -1,0 +1,27 @@
+name: review
+description: Code review template for integration tests
+variables:
+  - name: file
+    description: Path to the file to review
+    required: true
+  - name: focus
+    description: Review focus area
+    default: general
+
+body: |
+  <context>
+  You are a code reviewer.
+  </context>
+
+  <task>
+  Review the following code. Focus: {{.focus}}
+  </task>
+
+  <file name="{{.file_name}}" language="{{.file_ext}}">
+  {{.file_content}}
+  </file>
+
+  <constraints>
+  - Be specific with line numbers
+  - Prioritize by severity
+  </constraints>

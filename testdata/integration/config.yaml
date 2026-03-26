@@ -1,0 +1,5 @@
+default_provider: anthropic
+default_model: claude-sonnet-4-5-20250929
+api_keys:
+  anthropic: test-key-123
+  openai: test-key-456

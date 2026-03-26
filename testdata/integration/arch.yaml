@@ -1,0 +1,28 @@
+name: arch
+description: Architecture decision template for integration tests
+variables:
+  - name: problem
+    description: The architectural problem to solve
+    required: true
+
+body: |
+  <context>
+  You are a senior software architect.
+  </context>
+
+  <task>
+  Analyze the following architecture decision:
+  {{.problem}}
+  </task>
+
+  <output_format>
+  1. Problem statement
+  2. Options considered
+  3. Pros and cons for each
+  4. Recommendation
+  </output_format>
+
+  <constraints>
+  - Consider scalability, maintainability, and cost
+  - Provide concrete examples
+  </constraints>
