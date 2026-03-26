@@ -46,77 +46,77 @@ Create a killer README that sells the vision and enables quick start.
 Guide for developers who want to contribute.
 
 **Sections:**
-- [ ] Developer setup
-  - [ ] Go version requirement (1.22+)
-  - [ ] Clone and setup: git clone, cd promptctl, go build -o promptctl .
-  - [ ] Dependencies: go mod download, go mod verify
-- [ ] Running the project
-  - [ ] Build: `go build -o promptctl .`
-  - [ ] Run: `./promptctl --help`
-  - [ ] Tests: `go test ./...`
-  - [ ] Coverage: `go test -cover ./...`
-- [ ] Code style
-  - [ ] gofmt: run before commit
-  - [ ] go vet: must pass
-  - [ ] Naming conventions (CamelCase, unexported prefix)
-  - [ ] Error handling best practices
-- [ ] PR process
-  - [ ] Fork repo, create feature branch
-  - [ ] Commit message format: "feat: ...", "fix: ...", "chore: ..."
-  - [ ] Tests required for new features
-  - [ ] PR description should reference issue
-  - [ ] CI must pass before merge
-- [ ] Testing requirements
-  - [ ] Unit tests for new functions
-  - [ ] Integration tests for CLI commands
-  - [ ] Example: how to test a new command
-- [ ] Adding a new command
-  - [ ] Create file in cmd/ (e.g., cmd/mycmd.go)
-  - [ ] Implement Execute() method
-  - [ ] Add tests in cmd/mycmd_test.go
-  - [ ] Update root.go to register command
-  - [ ] Add to README quick reference
-- [ ] Reporting issues
-  - [ ] Bug report template
-  - [ ] Feature request template
-  - [ ] Please include: OS, Go version, promptctl version
+- [x] Developer setup
+  - [x] Go version requirement (1.22+)
+  - [x] Clone and setup: git clone, cd promptctl, go build -o promptctl .
+  - [x] Dependencies: go mod download, go mod verify
+- [x] Running the project
+  - [x] Build: `go build -o promptctl .`
+  - [x] Run: `./promptctl --help`
+  - [x] Tests: `go test ./...`
+  - [x] Coverage: `go test -cover ./...`
+- [x] Code style
+  - [x] gofmt: run before commit
+  - [x] go vet: must pass
+  - [x] Naming conventions (CamelCase, unexported prefix)
+  - [x] Error handling best practices
+- [x] PR process
+  - [x] Fork repo, create feature branch
+  - [x] Commit message format: "feat: ...", "fix: ...", "chore: ..."
+  - [x] Tests required for new features
+  - [x] PR description should reference issue
+  - [x] CI must pass before merge
+- [x] Testing requirements
+  - [x] Unit tests for new functions
+  - [x] Integration tests for CLI commands
+  - [x] Example: how to test a new command
+- [x] Adding a new command
+  - [x] Create file in cmd/ (e.g., cmd/mycmd.go)
+  - [x] Implement Execute() method
+  - [x] Add tests in cmd/mycmd_test.go
+  - [x] Update root.go to register command
+  - [x] Add to README quick reference
+- [x] Reporting issues
+  - [x] Bug report template
+  - [x] Feature request template
+  - [x] Please include: OS, Go version, promptctl version
 
 ### 3. Create docs/INSTALL.md
 Platform-specific installation instructions.
 
 **Sections:**
-- [ ] Quick install (copy-paste for lazy users):
-  - [ ] macOS: `brew install prompt-ctl/tap/promptctl`
-  - [ ] Linux: `snap install promptctl`
-  - [ ] Windows: Direct binary download or `choco install promptctl`
-  - [ ] Universal: `go install github.com/prompt-ctl/prompt-ctl@latest`
-- [ ] Linux detailed:
-  - [ ] Ubuntu/Debian: APT repository or direct .deb download
-  - [ ] Fedora/RHEL: yum/dnf repository
-  - [ ] Arch Linux: pacman or AUR
-  - [ ] Alpine: apk (if available)
-  - [ ] Snap: universal snap package
-  - [ ] Direct binary: .tar.gz download and PATH setup
-  - [ ] Verify: `promptctl version`
-- [ ] macOS detailed:
-  - [ ] Homebrew: `brew tap prompt-ctl/tap` + `brew install promptctl`
-  - [ ] Direct binary: download from GitHub releases
-  - [ ] Apple Silicon note: Built for both Intel and ARM
-  - [ ] Verify: `promptctl version`
-- [ ] Windows detailed:
-  - [ ] Direct binary: download .zip from GitHub releases
-  - [ ] Add to PATH: environment variable setup
-  - [ ] Chocolatey (if available): `choco install promptctl`
-  - [ ] WSL: Use Linux instructions
-  - [ ] Verify: `promptctl version`
-- [ ] From source:
-  - [ ] Requirements: Go 1.22+, git
-  - [ ] Build: `git clone ... && cd prompt-ctl && go build -o promptctl . && sudo mv promptctl /usr/local/bin/`
-  - [ ] Verify: `promptctl version`
-- [ ] Uninstall:
-  - [ ] macOS/Linux: `brew uninstall promptctl` or `rm /usr/local/bin/promptctl`
-  - [ ] Linux snap: `snap remove promptctl`
-  - [ ] Windows: Use Control Panel or delete binary
+- [x] Quick install (copy-paste for lazy users):
+  - [x] macOS: `brew install prompt-ctl/tap/promptctl`
+  - [x] Linux: `snap install promptctl`
+  - [x] Windows: Direct binary download or `choco install promptctl`
+  - [x] Universal: `go install github.com/prompt-ctl/prompt-ctl@latest`
+- [x] Linux detailed:
+  - [x] Ubuntu/Debian: APT repository or direct .deb download
+  - [x] Fedora/RHEL: yum/dnf repository
+  - [x] Arch Linux: pacman or AUR
+  - [x] Alpine: apk (if available)
+  - [x] Snap: universal snap package
+  - [x] Direct binary: .tar.gz download and PATH setup
+  - [x] Verify: `promptctl version`
+- [x] macOS detailed:
+  - [x] Homebrew: `brew tap prompt-ctl/tap` + `brew install promptctl`
+  - [x] Direct binary: download from GitHub releases
+  - [x] Apple Silicon note: Built for both Intel and ARM
+  - [x] Verify: `promptctl version`
+- [x] Windows detailed:
+  - [x] Direct binary: download .zip from GitHub releases
+  - [x] Add to PATH: environment variable setup
+  - [x] Chocolatey (if available): `choco install promptctl`
+  - [x] WSL: Use Linux instructions
+  - [x] Verify: `promptctl version`
+- [x] From source:
+  - [x] Requirements: Go 1.22+, git
+  - [x] Build: `git clone ... && cd prompt-ctl && go build -o promptctl . && sudo mv promptctl /usr/local/bin/`
+  - [x] Verify: `promptctl version`
+- [x] Uninstall:
+  - [x] macOS/Linux: `brew uninstall promptctl` or `rm /usr/local/bin/promptctl`
+  - [x] Linux snap: `snap remove promptctl`
+  - [x] Windows: Use Control Panel or delete binary
 
 ### 4. Create docs/ARCHITECTURE.md
 Deep dive for contributors and curious users.

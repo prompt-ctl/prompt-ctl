@@ -21,3 +21,5 @@
 | [TWEETS_GEMINI_3.1](TWEETS_GEMINI_3.1.md) | Tweets — Gemini 3.1 Pro support |
 | [plans/2026-02-19-gemini-3.1-prep](plans/2026-02-19-gemini-3.1-prep.md) | Gemini 3.1 Pro — Prep and implementation checklist |
 | [plans/2026-02-26-persistent-benchmark-recording](plans/2026-02-26-persistent-benchmark-recording.md) | Persistent Benchmark Recording Implementation Plan |
+| [CONTRIBUTING](CONTRIBUTING.md) | Contributing to promptctl |
+| [INSTALL](INSTALL.md) | Installation Guide |
