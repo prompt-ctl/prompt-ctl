@@ -274,6 +274,31 @@ Shorthand: `promptctl review --file=x.ts` is equivalent to `promptctl run review
 
 > Core CLI is forever free and open source. Cloud features coming soon.
 
+## Use with pi
+
+If you use [pi](https://github.com/mariozechner/pi) (a local AI coding agent), you can install the promptctl integration to get slash commands and an LLM-callable tool directly inside pi sessions.
+
+```bash
+pi install npm:@prompt-ctl/pi-promptctl
+```
+
+This adds:
+
+- `/promptctl <template> [--var=value]` — render any template and inject as the next user message
+- `/quick-templates` — list available templates
+- `/cost-score <file>` — score a prompt file for quality (0-100)
+- `promptctl_apply` tool — lets the LLM call promptctl directly during a session
+
+Example inside pi:
+
+```
+/promptctl review --file=src/auth.ts --focus=security
+/promptctl debug --file=src/worker.go --error="context deadline exceeded"
+/quick-templates
+```
+
+The extension is included in the repo under `pi-package/` and published to npm.
+
 ## Contributing
 
 We welcome contributions! See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:

@@ -20,6 +20,16 @@ The foundation is shipped. promptctl is a fully functional CLI for prompt engine
 - **CI/CD friendly** - Exit codes, JSON output, and `--min-score` gates for pipelines
 - **Clipboard integration** - Copy rendered prompts to clipboard with `promptctl cp`
 
+## Shipped: pi Integration
+
+The promptctl pi extension is available now. Install it inside any pi session:
+
+```bash
+pi install npm:@prompt-ctl/pi-promptctl
+```
+
+Adds `/promptctl`, `/quick-templates`, `/cost-score` slash commands and a `promptctl_apply` tool the LLM can call directly. See `pi-package/` in the repository.
+
 ## Planned: v1.1.0 - Prompt Testing Framework
 
 Treat prompts like code means testing them like code. This release adds a testing layer:
