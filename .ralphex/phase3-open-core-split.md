@@ -217,14 +217,14 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] For each finding: remove or sanitize
 
 ### 13. Compile and Test
-- [ ] Run `go build -o promptctl .` — must succeed
-- [ ] Run `go vet ./...` — no issues
-- [ ] Run `go test ./...` — all tests pass
-- [ ] Run `./promptctl version` — prints correct version
-- [ ] Run `./promptctl init` — works in temp directory
-- [ ] Run `./promptctl list` — shows available templates
-- [ ] Run `./promptctl score` — works on a test template
-- [ ] Run `./promptctl --help` — all commands listed, no broken references
+- [x] Run `go build -o promptctl .` — must succeed
+- [x] Run `go vet ./...` — no issues
+- [x] Run `go test ./...` — all tests pass
+- [x] Run `./promptctl version` — prints correct version
+- [x] Run `./promptctl init` — works in temp directory
+- [x] Run `./promptctl list` — shows available templates
+- [x] Run `./promptctl score` — works on a test template
+- [x] Run `./promptctl --help` — all commands listed, no broken references
 
 ### 14. Commit
 - [ ] Stage all changes: `git add -A`
