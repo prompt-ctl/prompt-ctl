@@ -1,8 +1,6 @@
 package prompt
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -143,23 +141,17 @@ func TestEnhanceWithFallback_UseRuleWhenURLEmpty(t *testing.T) {
 	}
 }
 
-func TestEnhanceWithFallback_FallbackToRuleOnAPIFailure(t *testing.T) {
-	// Server returns 500 so API fails; should fall back to rule-based
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-
+func TestEnhanceWithFallback_AlwaysUsesRuleBased(t *testing.T) {
 	cfg := EnhanceConfig{Intent: "analyze my startup idea", OutputFormat: "xml"}
-	result, err := EnhanceWithFallback(cfg, server.URL, "llm")
+	result, err := EnhanceWithFallback(cfg, "https://enhance.example.com", "llm")
 	if err != nil {
-		t.Fatalf("EnhanceWithFallback should fall back, err = %v", err)
+		t.Fatalf("EnhanceWithFallback err = %v", err)
 	}
 	if result == nil || result.Prompt == "" {
-		t.Fatal("expected fallback to rule-based prompt")
+		t.Fatal("expected rule-based prompt")
 	}
 	if !strings.Contains(result.Prompt, "<context>") {
-		t.Error("expected rule-based XML after fallback")
+		t.Error("expected rule-based XML output")
 	}
 }
 

@@ -27,18 +27,11 @@ type EnhanceResult struct {
 	Template string // YAML template version if SaveAs was set
 }
 
-// EnhanceWithFallback uses the LLM enhance API when enhanceMode is "llm" and enhanceURL is set;
-// otherwise (or on API failure) falls back to rule-based Enhance.
+// EnhanceWithFallback runs rule-based enhancement.
+// The cloud LLM enhance feature has been removed from the open-source version.
 func EnhanceWithFallback(cfg EnhanceConfig, enhanceURL, enhanceMode string) (*EnhanceResult, error) {
 	if strings.TrimSpace(cfg.Intent) == "" {
 		return nil, fmt.Errorf("intent cannot be empty")
-	}
-	if enhanceMode == "llm" && enhanceURL != "" {
-		result, err := EnhanceViaAPI(enhanceURL, cfg)
-		if err == nil {
-			return result, nil
-		}
-		// Fall through to rule-based on any error
 	}
 	return Enhance(cfg)
 }

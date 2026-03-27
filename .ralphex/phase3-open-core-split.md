@@ -103,21 +103,21 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Run `go test ./...` to verify tests pass
 
 ### 4. Remove Enhance Client
-- [ ] `git rm prompt/enhanceclient.go`
-- [ ] `git rm prompt/enhanceclient_test.go`
-- [ ] Search ALL Go files for references to `EnhanceViaAPI`, `EnhanceConfig`, `EnhanceResult`, `EnhanceViaAPIWithClient`
-- [ ] For each reference:
+- [x] `git rm prompt/enhanceclient.go`
+- [x] `git rm prompt/enhanceclient_test.go`
+- [x] Search ALL Go files for references to `EnhanceViaAPI`, `EnhanceConfig`, `EnhanceResult`, `EnhanceViaAPIWithClient`
+- [x] For each reference:
   - If it's a command that calls enhance API (like `create` or `send --enhance`):
     - Keep the command structure
     - Replace the enhance call with: `fmt.Println("The enhance feature requires prompt-ctl cloud. Visit https://prompt-ctl.com")`
     - Return appropriate exit code
   - If it's a test: remove the test or update it
   - If it's a type definition used elsewhere: keep a minimal stub
-- [ ] Check if `EnhanceConfig` or `EnhanceResult` types are used in other files
+- [x] Check if `EnhanceConfig` or `EnhanceResult` types are used in other files
   - If yes, keep minimal type definitions in a new file `prompt/enhance_types.go`
   - If no, remove completely
-- [ ] Run `go build ./...` to verify
-- [ ] Run `go test ./...` to verify
+- [x] Run `go build ./...` to verify
+- [x] Run `go test ./...` to verify
 
 ### 5. Remove Internal Scripts
 - [ ] `git rm scripts/one-time-private-and-release.sh`
