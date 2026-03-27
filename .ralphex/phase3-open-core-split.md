@@ -120,18 +120,18 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Run `go test ./...` to verify
 
 ### 5. Remove Internal Scripts
-- [ ] `git rm scripts/one-time-private-and-release.sh`
-- [ ] `git rm scripts/setup-public-releases-gh.sh`
-- [ ] `git rm scripts/setup-brew.sh`
-- [ ] `git rm scripts/deploy-enhance-and-alerts.sh`
-- [ ] `git rm scripts/cf-deploy-all.sh`
-- [ ] `git rm scripts/fix-release.sh`
-- [ ] `git rm scripts/release-0.2.0.sh`
-- [ ] `git rm scripts/PROMPT-FOR-LLM-PRICING.md`
-- [ ] `git rm scripts/PUBLISHING.md`
-- [ ] `git rm deploy-workers.sh`
-- [ ] `git rm apply_ci_mode.sh`
-- [ ] Review remaining scripts (release.sh, coverage.sh, emulated_user_test.sh, validate_emulated.sh) for private infra references
+- [x] `git rm scripts/one-time-private-and-release.sh`
+- [x] `git rm scripts/setup-public-releases-gh.sh`
+- [x] `git rm scripts/setup-brew.sh`
+- [x] `git rm scripts/deploy-enhance-and-alerts.sh`
+- [x] `git rm scripts/cf-deploy-all.sh`
+- [x] `git rm scripts/fix-release.sh`
+- [x] `git rm scripts/release-0.2.0.sh`
+- [x] `git rm scripts/PROMPT-FOR-LLM-PRICING.md`
+- [x] `git rm scripts/PUBLISHING.md`
+- [x] `git rm deploy-workers.sh`
+- [x] `git rm apply_ci_mode.sh`
+- [x] Review remaining scripts (release.sh, coverage.sh, emulated_user_test.sh, validate_emulated.sh) for private infra references
   - If they reference private repos, API keys, or internal URLs: remove or sanitize
   - If clean: keep
 
