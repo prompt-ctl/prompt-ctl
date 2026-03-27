@@ -76,13 +76,13 @@ You are preparing the promptctl codebase for open-source release by removing all
 ## Tasks
 
 ### 1. Remove Cloud Workers
-- [ ] `git rm -r worker/`
-- [ ] `git rm -r worker-try/`
-- [ ] `git rm -r worker-alerts/`
-- [ ] Verify no Go code imports anything from these directories
-- [ ] Remove `deploy-workers.sh` from repo root
-- [ ] Remove worker-related entries from Makefile (deploy-workers, deploy-enhance, deploy-try, setup-try, analytics-init)
-- [ ] Keep Makefile targets: build, test, release
+- [x] `git rm -r worker/`
+- [x] `git rm -r worker-try/`
+- [x] `git rm -r worker-alerts/`
+- [x] Verify no Go code imports anything from these directories
+- [x] Remove `deploy-workers.sh` from repo root
+- [x] Remove worker-related entries from Makefile (deploy-workers, deploy-enhance, deploy-try, setup-try, analytics-init)
+- [x] Keep Makefile targets: build, test, release
 
 ### 2. Remove Mac App
 - [ ] `git rm -r promptctl-app/`
