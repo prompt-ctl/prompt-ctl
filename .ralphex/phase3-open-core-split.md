@@ -85,9 +85,9 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Keep Makefile targets: build, test, release
 
 ### 2. Remove Mac App
-- [ ] `git rm -r promptctl-app/`
-- [ ] `git rm -r .worktrees/`
-- [ ] Add `.worktrees/` to .gitignore
+- [x] `git rm -r promptctl-app/`
+- [x] `git rm -r .worktrees/`
+- [x] Add `.worktrees/` to .gitignore
 
 ### 3. Remove Analytics
 - [ ] `git rm -r internal/analytics/`
