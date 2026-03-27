@@ -90,17 +90,17 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Add `.worktrees/` to .gitignore
 
 ### 3. Remove Analytics
-- [ ] `git rm -r internal/analytics/`
-- [ ] Search ALL Go files for `import` references to `internal/analytics`
-- [ ] For each reference found:
+- [x] `git rm -r internal/analytics/`
+- [x] Search ALL Go files for `import` references to `internal/analytics`
+- [x] For each reference found:
   - Remove the import line
   - Remove ALL code that calls analytics functions (SendEvent, Consent, etc.)
   - Replace with no-op or remove the block entirely
   - Ensure the file still compiles
-- [ ] Search for `PROMPTCTL_GA4_SECRET` references and remove them
-- [ ] Search for `G-DQBN89S2FZ` (GA4 measurement ID) and remove
-- [ ] Run `go build ./...` to verify compilation
-- [ ] Run `go test ./...` to verify tests pass
+- [x] Search for `PROMPTCTL_GA4_SECRET` references and remove them
+- [x] Search for `G-DQBN89S2FZ` (GA4 measurement ID) and remove
+- [x] Run `go build ./...` to verify compilation
+- [x] Run `go test ./...` to verify tests pass
 
 ### 4. Remove Enhance Client
 - [ ] `git rm prompt/enhanceclient.go`
