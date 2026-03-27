@@ -43,6 +43,3 @@ jobs:
             --min-score=50 \
             --ci
 
-      - name: Worker tests
-        run: |
-          cd worker && npm test

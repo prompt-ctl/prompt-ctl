@@ -152,11 +152,11 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Verify remaining docs don't reference removed files
 
 ### 7. Remove Private Workflows
-- [ ] `git rm .github/workflows/release.yml`
-- [ ] `git rm .github/workflows/release-trigger.yml`
-- [ ] `git rm .github/workflows/prompt-regression.yml`
-- [ ] Review `.github/workflows/docs-index.yml` — remove if it references private infra
-- [ ] Verify `.github/workflows/ci.yml` has no references to secrets beyond what's needed for public CI
+- [x] `git rm .github/workflows/release.yml`
+- [x] `git rm .github/workflows/release-trigger.yml`
+- [x] `git rm .github/workflows/prompt-regression.yml`
+- [x] Review `.github/workflows/docs-index.yml` — remove if it references private infra
+- [x] Verify `.github/workflows/ci.yml` has no references to secrets beyond what's needed for public CI
 
 ### 8. Remove Misc Files
 - [ ] Check `gs` file contents — if internal, `git rm gs`
