@@ -6,8 +6,9 @@ import (
 	"strings"
 )
 
-// DefaultEnhanceURL is the hosted promptctl-enhance Worker used when PROMPTCTL_ENHANCE=llm and PROMPTCTL_ENHANCE_URL is unset.
-const DefaultEnhanceURL = "https://promptctl-enhance.kvl-olg.workers.dev"
+// DefaultEnhanceURL is empty in the open-source version. Cloud enhancement is not included.
+// Set PROMPTCTL_ENHANCE_URL to point to your own backend, or use PROMPTCTL_ENHANCE=rule for offline mode.
+const DefaultEnhanceURL = ""
 
 // Config holds all promptctl configuration
 type Config struct {
@@ -18,9 +19,9 @@ type Config struct {
 	// Override with PROMPTCTL_PROMPTS_DIR or ~/.promptctl/prompts_dir file.
 	PromptsDir  string
 	DefaultVars map[string]string
-	// EnhanceURL is the optional LLM enhance API endpoint (e.g. Cloudflare Worker). Set with PROMPTCTL_ENHANCE_URL.
+	// EnhanceURL is an optional custom enhance API endpoint. Set with PROMPTCTL_ENHANCE_URL.
 	EnhanceURL string
-	// EnhanceMode is "llm" (default, uses hosted Worker) or "rule" (offline). Set with PROMPTCTL_ENHANCE.
+	// EnhanceMode is "llm" or "rule" (offline, default). Set with PROMPTCTL_ENHANCE.
 	EnhanceMode string
 	// DefaultCreateFormat is the saved output format for "promptctl create" when not overridden by --format. Stored in ~/.promptctl/create_format.
 	DefaultCreateFormat string

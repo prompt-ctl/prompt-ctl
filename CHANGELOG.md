@@ -74,7 +74,7 @@ All notable changes to promptctl are documented here.
 
 ## [0.4.6]
 
-- Binaries published to public [promptctl-releases](https://github.com/oleg-koval/promptctl-releases); Homebrew cask points there (install with no token).
+- Binaries published to GitHub Releases; Homebrew install available.
 - `make release VERSION=x.y.z` bumps version in `cmd/root.go`, commits, tags, and triggers the release workflow.
 - Docs page on site; install/upgrade use `brew install --cask` / `brew upgrade --cask`.
 

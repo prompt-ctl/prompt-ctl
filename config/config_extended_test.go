@@ -224,8 +224,8 @@ func TestLoad_EnhanceModeRule_NoDefaultURL(t *testing.T) {
 	if cfg.EnhanceMode != "rule" {
 		t.Errorf("EnhanceMode = %q, want rule", cfg.EnhanceMode)
 	}
-	// When mode is "rule", URL should not be set to default
-	if cfg.EnhanceURL == DefaultEnhanceURL {
-		t.Error("rule mode should not set default enhance URL")
+	// When mode is "rule" and no URL is set, EnhanceURL should be empty
+	if cfg.EnhanceURL != "" {
+		t.Errorf("rule mode with no PROMPTCTL_ENHANCE_URL should have empty EnhanceURL, got %q", cfg.EnhanceURL)
 	}
 }

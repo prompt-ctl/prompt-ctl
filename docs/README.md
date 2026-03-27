@@ -12,3 +12,8 @@
 | [CONTRIBUTING](CONTRIBUTING.md) | Contributing to promptctl |
 | [INSTALL](INSTALL.md) | Installation Guide |
 | [ARCHITECTURE](ARCHITECTURE.md) | Architecture |
+| [ROADMAP](ROADMAP.md) | Roadmap |
+| [plans/2025-02-18-cli-interactive-analytics-design](plans/2025-02-18-cli-interactive-analytics-design.md) | plans/2025 02 18 cli interactive analytics design |
+| [plans/2025-02-18-cli-interactive-analytics-plan](plans/2025-02-18-cli-interactive-analytics-plan.md) | plans/2025 02 18 cli interactive analytics plan |
+| [plans/2025-02-19-analytics-collection-and-reading-design](plans/2025-02-19-analytics-collection-and-reading-design.md) | plans/2025 02 19 analytics collection and reading design |
+| [plans/2025-02-19-analytics-collection-and-reading-plan](plans/2025-02-19-analytics-collection-and-reading-plan.md) | plans/2025 02 19 analytics collection and reading plan |

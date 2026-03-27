@@ -39,8 +39,7 @@ promptctl CLI (main.go)
   │     ├── shell/           Shell alias management
   │     └── ui/              Terminal colors, prompts, spinners
   │
-  └── worker/        Cloud components (Cloudflare Worker, optional)
-        └── src/index.js     /enhance endpoint for LLM-powered enhancement
+  └── (cloud components not included in open-source build)
 ```
 
 ## Core Packages
@@ -291,15 +290,14 @@ go test ./prompt/...       # Template package only
 go test ./cmd/ -run Score  # Specific test
 ```
 
-## Cloud Components
+## Enhancement Modes
 
-The `worker/` directory contains an optional Cloudflare Worker that provides LLM-powered prompt enhancement.
+promptctl supports two enhancement modes, controlled by `PROMPTCTL_ENHANCE`:
 
-- **Endpoint**: `POST /enhance` - Takes a user's raw intent and returns a structured prompt
-- **Stack**: Cloudflare Workers with AI (Llama 3.1), Analytics Engine, D1 Database
-- **Fallback**: When the worker is unavailable, promptctl falls back to rule-based enhancement offline
+- **rule** (default): Offline, deterministic rule-based enhancement. No network required.
+- **llm**: Point to a custom backend via `PROMPTCTL_ENHANCE_URL` for LLM-powered enhancement.
 
-The cloud component is completely separate from the core CLI. The CLI works fully offline; the worker adds optional AI-powered enhancement.
+The CLI works fully offline without any external dependencies.
 
 ## Dependencies
 

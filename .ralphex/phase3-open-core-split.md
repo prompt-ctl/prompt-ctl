@@ -193,13 +193,13 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Verify existing entries are still relevant
 
 ### 12. Final Grep Audit
-- [ ] Search entire codebase for private URLs:
+- [x] Search entire codebase for private URLs:
   - `oleg-koval/promptctl-releases`
   - `oleg-koval/homebrew-tap`
   - `oleg-koval/promptctl` (should be updated to new org if applicable)
   - Any Cloudflare worker URLs
   - Any wrangler references
-- [ ] Search for API keys / secrets patterns:
+- [x] Search for API keys / secrets patterns:
   - `sk-ant-` (Anthropic key prefix)
   - `sk-` followed by long string
   - `PROMPTCTL_GA4_SECRET`
@@ -207,14 +207,14 @@ You are preparing the promptctl codebase for open-source release by removing all
   - `CF_ACCOUNT_ID`
   - `ALERT_WEBHOOK_URL`
   - `HOMEBREW_TAP_GITHUB_TOKEN`
-- [ ] Search for internal references:
+- [x] Search for internal references:
   - `promptctl-enhance`
   - `promptctl-try`
   - `promptctl-alerts`
   - `wrangler`
   - `D1`
   - `Analytics Engine`
-- [ ] For each finding: remove or sanitize
+- [x] For each finding: remove or sanitize
 
 ### 13. Compile and Test
 - [ ] Run `go build -o promptctl .` — must succeed

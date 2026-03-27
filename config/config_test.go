@@ -174,11 +174,10 @@ func TestLoad_EnhanceURLDefaultWhenLLM(t *testing.T) {
 }
 
 func TestDefaultEnhanceURL(t *testing.T) {
-	if DefaultEnhanceURL == "" {
-		t.Error("DefaultEnhanceURL must be non-empty")
-	}
-	if len(DefaultEnhanceURL) < 8 || DefaultEnhanceURL[:8] != "https://" {
-		t.Errorf("DefaultEnhanceURL must be https: %q", DefaultEnhanceURL)
+	// In the open-source version, DefaultEnhanceURL is empty.
+	// Users can set PROMPTCTL_ENHANCE_URL to point to their own backend.
+	if DefaultEnhanceURL != "" {
+		t.Errorf("DefaultEnhanceURL should be empty in OSS build, got %q", DefaultEnhanceURL)
 	}
 }
 
