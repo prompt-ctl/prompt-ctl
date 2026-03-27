@@ -246,13 +246,13 @@ You are preparing the promptctl codebase for open-source release by removing all
 ### 15. Preserve Rule-Based Enhance Mode
 The CLI has an offline rule-based enhance mode (PROMPTCTL_ENHANCE=rule) that works WITHOUT the cloud API.
 This is a KEY differentiator for the OSS version — free prompt enhancement without cloud dependency.
-- [ ] Check if rule-based enhance logic lives in prompt/enhance.go (NOT enhanceclient.go)
-- [ ] If rule-based logic is in enhance.go: KEEP it (this is open-source gold)
-- [ ] If rule-based logic is mixed with cloud client: extract it into its own file
-- [ ] Verify `promptctl create` or `promptctl fix` can still use rule-based mode offline
-- [ ] Ensure PROMPTCTL_ENHANCE=rule env var still works
-- [ ] Update README to highlight offline/rule-based enhance as a feature
-- [ ] The cloud enhance (LLM-powered via worker) should gracefully degrade to rule-based when no API
+- [x] Check if rule-based enhance logic lives in prompt/enhance.go (NOT enhanceclient.go)
+- [x] If rule-based logic is in enhance.go: KEEP it (this is open-source gold)
+- [x] If rule-based logic is mixed with cloud client: extract it into its own file
+- [x] Verify `promptctl create` or `promptctl fix` can still use rule-based mode offline
+- [x] Ensure PROMPTCTL_ENHANCE=rule env var still works
+- [x] Update README to highlight offline/rule-based enhance as a feature
+- [x] The cloud enhance (LLM-powered via worker) should gracefully degrade to rule-based when no API
 
 ### 16. Bundle Pi Integration Package
 A working pi extension already exists at ~/.pi/agent/extensions/promptctl-integration.ts

@@ -165,7 +165,14 @@ Transform raw intent into structured prompts:
 promptctl create "review my authentication code for security holes"
 ```
 
-This uses an AI enhancer to expand your intent into a well-structured prompt with context, task, constraints, and output format. A quality score (0-100) is printed so you know how good the result is.
+This uses a **rule-based prompt enhancer** (fully offline, no LLM needed) to expand your intent into a well-structured prompt with context, task, constraints, and output format. A quality score (0-100) is printed so you know how good the result is.
+
+The enhancer works by analyzing your intent, detecting the domain and task type, and applying structural best practices deterministically — no network call, no API key required.
+
+```bash
+# Force rule-based mode explicitly (default when PROMPTCTL_ENHANCE_URL is not set)
+PROMPTCTL_ENHANCE=rule promptctl create "debug the memory leak in my Go server"
+```
 
 ### Prompt Scoring and Fixing (CI-ready)
 
@@ -252,7 +259,7 @@ Shorthand: `promptctl review --file=x.ts` is equivalent to `promptctl run review
 - LLM integration (Anthropic, OpenAI) with cost estimation
 - Prompt scoring and auto-fix
 - Experimentation and optimization
-- AI-powered prompt creation from intent
+- Offline rule-based prompt creation from intent (no LLM, no API key, no network)
 
 ### v1.1.0: Prompt Testing Framework
 - Test templates against expected outputs
