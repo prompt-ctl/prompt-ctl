@@ -55,27 +55,12 @@ changelog:
       - "^ci:"
       - "^chore:"
 
-# Homebrew Cask: binaries are served from public promptctl-releases repo so anyone can brew install.
-# skip_upload: we push the cask in the workflow after copying release to public repo.
-homebrew_casks:
-  - repository:
-      owner: oleg-koval
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    name: promptctl
-    homepage: "https://prompt-ctl.com"
-    description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
-    license: "MIT"
-    skip_upload: true
-    url:
-      template: "https://github.com/oleg-koval/promptctl-releases/releases/download/{{.Tag}}/{{.ArtifactName}}"
-      verified: "github.com/oleg-koval/promptctl-releases/"
-    binaries:
-      - promptctl
-    # Remove quarantine so unsigned binary runs on macOS
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/promptctl"]
-          end
+# Homebrew tap configuration can be added here when publishing to a public tap.
+# Example:
+# brews:
+#   - repository:
+#       owner: <your-org>
+#       name: homebrew-tap
+#     homepage: "https://prompt-ctl.com"
+#     description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
+#     license: "MIT"

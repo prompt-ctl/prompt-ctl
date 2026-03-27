@@ -168,13 +168,13 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Remove `dist/` if tracked
 
 ### 9. Update .goreleaser.yaml
-- [ ] Review homebrew_casks section
+- [x] Review homebrew_casks section
   - Update repository owner if moving to new org
   - Or remove homebrew_casks entirely if handling separately
-- [ ] Remove any references to `promptctl-releases` private repo
-- [ ] Remove any references to `HOMEBREW_TAP_GITHUB_TOKEN` if not applicable
-- [ ] Verify builds section is correct for public release
-- [ ] Ensure ldflags reference correct module path
+- [x] Remove any references to `promptctl-releases` private repo
+- [x] Remove any references to `HOMEBREW_TAP_GITHUB_TOKEN` if not applicable
+- [x] Verify builds section is correct for public release
+- [x] Ensure ldflags reference correct module path
 
 ### 10. Update Makefile
 - [ ] Remove targets: deploy-workers, deploy-enhance, deploy-try, setup-try, analytics-init
