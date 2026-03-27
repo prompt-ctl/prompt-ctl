@@ -177,10 +177,10 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Ensure ldflags reference correct module path
 
 ### 10. Update Makefile
-- [ ] Remove targets: deploy-workers, deploy-enhance, deploy-try, setup-try, analytics-init
-- [ ] Keep targets: build, test, release
-- [ ] Verify `make build` works
-- [ ] Verify `make test` works
+- [x] Remove targets: deploy-workers, deploy-enhance, deploy-try, setup-try, analytics-init
+- [x] Keep targets: build, test, release
+- [x] Verify `make build` works
+- [x] Verify `make test` works
 
 ### 11. Update .gitignore
 - [ ] Add entries for removed directories (so contributors don't recreate them):
