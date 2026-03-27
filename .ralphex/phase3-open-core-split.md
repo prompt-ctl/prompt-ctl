@@ -227,9 +227,9 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Run `./promptctl --help` — all commands listed, no broken references
 
 ### 14. Commit
-- [ ] Stage all changes: `git add -A`
-- [ ] Commit: `git commit -m "chore: strip proprietary code for open-source release"`
-- [ ] Verify commit diff looks correct (only removals + stubs, no new proprietary code)
+- [x] Stage all changes: `git add -A`
+- [x] Commit: `git commit -m "chore: strip proprietary code for open-source release"`
+- [x] Verify commit diff looks correct (only removals + stubs, no new proprietary code)
 
 ## Success Criteria
 - ✓ Zero references to private infrastructure (workers, analytics, wrangler, private repos)
