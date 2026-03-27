@@ -183,14 +183,14 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Verify `make test` works
 
 ### 11. Update .gitignore
-- [ ] Add entries for removed directories (so contributors don't recreate them):
+- [x] Add entries for removed directories (so contributors don't recreate them):
   - `worker/`
   - `worker-try/`
   - `worker-alerts/`
   - `promptctl-app/`
   - `.worktrees/`
   - `internal/analytics/`
-- [ ] Verify existing entries are still relevant
+- [x] Verify existing entries are still relevant
 
 ### 12. Final Grep Audit
 - [ ] Search entire codebase for private URLs:

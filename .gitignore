@@ -45,8 +45,15 @@ worker-try/.wrangler/
 
 /scripts
 
+# Proprietary directories (removed from open-source release)
+worker/
+worker-try/
+worker-alerts/
+promptctl-app/
+internal/analytics/
+
 # Worktrees (isolated branches)
-.worktrees
+.worktrees/
 
 
 /docs/emulated-runs
