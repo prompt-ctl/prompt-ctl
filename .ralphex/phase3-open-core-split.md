@@ -136,20 +136,20 @@ You are preparing the promptctl codebase for open-source release by removing all
   - If clean: keep
 
 ### 6. Remove Internal Docs
-- [ ] `git rm docs/WRANGLER_ENV_VARS.md`
-- [ ] `git rm docs/CLI-DEPLOY.md`
-- [ ] `git rm docs/RELEASE-SETUP.md`
-- [ ] `git rm docs/PRESS_RELEASE.md`
-- [ ] `git rm docs/TWEETS_0.7.1.md`
-- [ ] `git rm docs/TWEETS_GEMINI_3.1.md`
-- [ ] `git rm docs/TWEETS_SHIP_IT.md`
-- [ ] `git rm docs/CHANGELOG_SHIP_IT.md`
-- [ ] `git rm docs/chatgpt-ideas.md`
-- [ ] `git rm docs/FEATURE_CONFIG.md`
-- [ ] `git rm docs/TAP-README.md`
-- [ ] `git rm docs/ANALYTICS_README.md`
-- [ ] Update `docs/index.html` if it exists and references removed docs
-- [ ] Verify remaining docs don't reference removed files
+- [x] `git rm docs/WRANGLER_ENV_VARS.md`
+- [x] `git rm docs/CLI-DEPLOY.md`
+- [x] `git rm docs/RELEASE-SETUP.md`
+- [x] `git rm docs/PRESS_RELEASE.md`
+- [x] `git rm docs/TWEETS_0.7.1.md`
+- [x] `git rm docs/TWEETS_GEMINI_3.1.md`
+- [x] `git rm docs/TWEETS_SHIP_IT.md`
+- [x] `git rm docs/CHANGELOG_SHIP_IT.md`
+- [x] `git rm docs/chatgpt-ideas.md`
+- [x] `git rm docs/FEATURE_CONFIG.md`
+- [x] `git rm docs/TAP-README.md`
+- [x] `git rm docs/ANALYTICS_README.md`
+- [x] Update `docs/index.html` if it exists and references removed docs
+- [x] Verify remaining docs don't reference removed files
 
 ### 7. Remove Private Workflows
 - [ ] `git rm .github/workflows/release.yml`
