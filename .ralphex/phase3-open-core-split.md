@@ -159,13 +159,13 @@ You are preparing the promptctl codebase for open-source release by removing all
 - [x] Verify `.github/workflows/ci.yml` has no references to secrets beyond what's needed for public CI
 
 ### 8. Remove Misc Files
-- [ ] Check `gs` file contents — if internal, `git rm gs`
-- [ ] Check if `package.json` and `package-lock.json` are needed for Go CLI
+- [x] Check `gs` file contents — if internal, `git rm gs`
+- [x] Check if `package.json` and `package-lock.json` are needed for Go CLI
   - If only for workers: `git rm package.json package-lock.json`
   - If needed for some Go tooling: keep
-- [ ] `git rm -r node_modules/` if tracked
-- [ ] Remove `coverage.out` if tracked
-- [ ] Remove `dist/` if tracked
+- [x] `git rm -r node_modules/` if tracked
+- [x] Remove `coverage.out` if tracked
+- [x] Remove `dist/` if tracked
 
 ### 9. Update .goreleaser.yaml
 - [ ] Review homebrew_casks section
