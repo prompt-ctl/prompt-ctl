@@ -53,6 +53,20 @@ See [docs/INSTALL.md](docs/INSTALL.md) for detailed platform-specific instructio
 - On interactive CLI launch, `promptctl` checks for a newer release and runs auto-update when installed via Homebrew.
 - Set `PROMPTCTL_AUTOUPDATE=0` to disable this behavior.
 
+## Validation
+
+Recent install, smoke, load, and security checks are published here:
+
+- [Validation report](https://prompt-ctl.com/test-results.html)
+
+Current showcase results:
+
+- Disposable Linux container install: `promptctl v1.0.0` installed successfully from the tap.
+- First-run smoke: `promptctl init` created starter templates in a fresh temp home.
+- Offline load test: 25 `promptctl create` runs completed in 70 ms total, 2 ms average.
+- Security scan: tracked-files Gitleaks scan returned no leaks.
+- Baseline CI: `go test ./...` and the GitHub security workflow are green.
+
 ## Quick Start (5 minutes)
 
 ```bash
