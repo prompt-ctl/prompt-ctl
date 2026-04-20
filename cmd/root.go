@@ -30,6 +30,7 @@ import (
 const version = "1.0.0"
 
 const githubReleasesLatest = "https://api.github.com/repos/prompt-ctl/promptctl/releases/latest"
+const autoUpdateInterval = 24 * time.Hour
 
 // Execute is the main entry point for the CLI
 func Execute() error {
@@ -966,6 +967,10 @@ func autoUpdateOnLaunch(command string) string {
 	if os.Getenv("CI") != "" || !interactive() || !autoUpdateEnabled() {
 		return ""
 	}
+	if !shouldRunAutoUpdateNow() {
+		return ""
+	}
+	defer markAutoUpdateCheckNow()
 
 	latest := latestReleaseVersion(3 * time.Second)
 	if latest == "" || !versionLess(version, latest) {
@@ -1008,6 +1013,41 @@ func brewHasPackage(kind, name string) bool {
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	return cmd.Run() == nil
+}
+
+func autoUpdateCheckPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".promptctl", "last_auto_update_check"), nil
+}
+
+func shouldRunAutoUpdateNow() bool {
+	path, err := autoUpdateCheckPath()
+	if err != nil {
+		return false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return true
+	}
+	ts, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
+	if err != nil {
+		return true
+	}
+	return time.Since(ts) >= autoUpdateInterval
+}
+
+func markAutoUpdateCheckNow() {
+	path, err := autoUpdateCheckPath()
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return
+	}
+	_ = os.WriteFile(path, []byte(time.Now().UTC().Format(time.RFC3339)), 0644)
 }
 
 // versionLess returns true if a is strictly less than b (e.g. "0.8.6" < "0.9.0"). Non-numeric parts are compared as strings.
