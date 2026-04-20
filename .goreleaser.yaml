@@ -5,6 +5,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 
 version: 2
+project_name: promptctl
 
 before:
   hooks:
@@ -45,8 +46,55 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  name_template: "Release {{.Version}}"
+  draft: false
+  prerelease: auto
+  footer: |
+    ## Installation
+
+    ### Homebrew
+    ```bash
+    brew tap oleg-koval/tap
+    brew install promptctl
+    ```
+
+    ### Direct Download
+    Download the binary for your platform above.
+
+    ### From Source
+    ```bash
+    git clone https://github.com/prompt-ctl/promptctl.git
+    cd promptctl
+    make build
+    ./promptctl --version
+    ```
+
+brews:
+  - name: promptctl
+    repository:
+      owner: oleg-koval
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: promptctl-bot
+      email: bot@prompt-ctl.com
+    commit_msg_template: "chore(release): update promptctl formula to {{ .Version }}"
+    homepage: https://prompt-ctl.com
+    description: CLI toolkit that transforms raw intent into structured, optimized prompts
+    license: MIT
+    directory: Formula
+    install: |
+      bin.install "promptctl"
+    test: |
+      system "#{bin}/promptctl --version"
 
 changelog:
+  disable: false
+  use: git
   sort: asc
   filters:
     exclude:
@@ -54,13 +102,3 @@ changelog:
       - "^test:"
       - "^ci:"
       - "^chore:"
-
-# Homebrew tap configuration can be added here when publishing to a public tap.
-# Example:
-# brews:
-#   - repository:
-#       owner: <your-org>
-#       name: homebrew-tap
-#     homepage: "https://prompt-ctl.com"
-#     description: "CLI toolkit that transforms raw intent into structured, optimized prompts"
-#     license: "MIT"

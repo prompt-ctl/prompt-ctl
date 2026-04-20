@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/oleg-koval/promptctl/config"
+	"github.com/oleg-koval/promptctl/internal/cloud"
 	"github.com/oleg-koval/promptctl/internal/onboarding"
 	"github.com/oleg-koval/promptctl/internal/safepath"
 	"github.com/oleg-koval/promptctl/internal/shell"
@@ -128,6 +128,8 @@ func Execute() error {
 		}
 
 		return runExperiment()
+	case "test", "t":
+		return runTest()
 	case "version", "-v", "--version":
 		fmt.Printf("promptctl v%s\n", version)
 		return nil
@@ -156,6 +158,7 @@ PROMPT ENGINEERING:
   run <n> [vars]   Run a prompt template (alias: r)
   send <n> [vars]  Run template and send to LLM (alias: s)
   cost <n> [vars]  Estimate cost before sending
+  test <n> [vars]  Run prompt tests (regression + model compare) (alias: t)
   experiment <n> [vars]  Benchmark template across models (alias: exp)
   experiment optimize <n>  Generate prompt variants and keep best
   list                List all available templates (alias: ls)
@@ -205,6 +208,7 @@ func createPrompt() error {
 	if err != nil {
 		return err
 	}
+	cloudClient := cloud.New(appCfg.CloudEnabled, appCfg.CloudBaseURL)
 
 	format := "markdown"
 	if f, ok := vars["format"]; ok {
@@ -300,7 +304,7 @@ func createPrompt() error {
 		for try := 1; try <= maxTries; try++ {
 			rating := askUserRating()
 			if rating >= 1 {
-				persistRating(rating, len(intent), appCfg.EnhanceURL)
+				persistRating(rating, len(intent), cloudClient)
 			}
 			if rating >= 4 && rating <= 5 {
 				break
@@ -344,7 +348,7 @@ func createPrompt() error {
 
 	if interactive() {
 		incrementCreateRunCount()
-		maybeAskFeedback(appCfg)
+		maybeAskFeedback(cloudClient)
 		maybeShowAliasTip()
 	}
 
@@ -1264,8 +1268,8 @@ func askUserRating() int {
 	return r
 }
 
-// persistRating appends a rating to ~/.promptctl/ratings.json and optionally POSTs to enhance URL /rating.
-func persistRating(rating int, intentLen int, enhanceURL string) {
+// persistRating appends a rating to ~/.promptctl/ratings.json and optionally sends it to cloud.
+func persistRating(rating int, intentLen int, cloudClient cloud.Client) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
@@ -1283,25 +1287,10 @@ func persistRating(rating int, intentLen int, enhanceURL string) {
 	}
 	_, _ = f.WriteString(line)
 	f.Close()
-	if enhanceURL != "" {
-		go postRatingToEnhance(enhanceURL, rating, intentLen)
-	}
-}
-
-func postRatingToEnhance(baseURL string, rating, intentLen int) {
-	baseURL = strings.TrimSuffix(baseURL, "/")
-	body := []byte(fmt.Sprintf(`{"rating":%d,"intent_len":%d}`, rating, intentLen))
-	req, err := http.NewRequest("POST", baseURL+"/rating", bytes.NewReader(body))
-	if err != nil {
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return
-	}
-	if resp != nil && resp.Body != nil {
-		resp.Body.Close()
+	if cloudClient != nil && cloudClient.Enabled() {
+		go func() {
+			_ = cloudClient.PostRating(rating, intentLen)
+		}()
 	}
 }
 
@@ -1355,7 +1344,7 @@ func incrementCreateRunCount() {
 }
 
 // shouldAskFeedback returns true if we should prompt for feedback (every N runs or every N days since last ask).
-func shouldAskFeedback(enhanceURL string) bool {
+func shouldAskFeedback() bool {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return false
@@ -1397,31 +1386,17 @@ func recordFeedbackAsked() {
 	_ = os.WriteFile(filepath.Join(dir, "feedback_last_asked"), []byte(today), 0644)
 }
 
-// submitFeedback sends feedback anonymously to enhanceURL/feedback or appends to local file.
-func submitFeedback(text string, enhanceURL string) {
+// submitFeedback sends feedback anonymously to cloud when enabled, with local fallback.
+func submitFeedback(text string, cloudClient cloud.Client) {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return
 	}
-	enhanceURL = strings.TrimSuffix(enhanceURL, "/")
-	if enhanceURL != "" {
-		body, _ := json.Marshal(map[string]string{"feedback": text})
-		req, err := http.NewRequest("POST", enhanceURL+"/feedback", bytes.NewReader(body))
-		if err != nil {
-			appendFeedbackLocal(text)
+	if cloudClient != nil && cloudClient.Enabled() {
+		if err := cloudClient.SubmitFeedback(text); err == nil {
+			recordFeedbackAsked()
 			return
 		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			appendFeedbackLocal(text)
-			return
-		}
-		if resp.Body != nil {
-			resp.Body.Close()
-		}
-		recordFeedbackAsked()
-		return
 	}
 	appendFeedbackLocal(text)
 }
@@ -1445,11 +1420,11 @@ func appendFeedbackLocal(text string) {
 }
 
 // maybeAskFeedback prompts for anonymous freeform feedback when appropriate and submits it.
-func maybeAskFeedback(appCfg *config.Config) {
+func maybeAskFeedback(cloudClient cloud.Client) {
 	if !ui.Interactive() {
 		return
 	}
-	if !shouldAskFeedback(appCfg.EnhanceURL) {
+	if !shouldAskFeedback() {
 		return
 	}
 	var text string
@@ -1457,7 +1432,7 @@ func maybeAskFeedback(appCfg *config.Config) {
 	if strings.TrimSpace(text) == "" {
 		return
 	}
-	submitFeedback(text, appCfg.EnhanceURL)
+	submitFeedback(text, cloudClient)
 	fmt.Fprintln(os.Stderr, "Thanks — feedback submitted anonymously.")
 }
 

@@ -199,6 +199,12 @@ promptctl fix --dry-run prompts/  # preview changes first
 Benchmark templates across models and optimize:
 
 ```bash
+# Product-facing prompt testing command
+promptctl test review --file=auth.ts --models=claude-sonnet-4-5
+
+# Regression guard against a baseline version
+promptctl test review --file=auth.ts --model=claude-sonnet-4-5 --baseline=v1
+
 # Compare a template across different models
 promptctl experiment review --file=auth.ts
 
@@ -235,6 +241,7 @@ Supported providers: Anthropic (Claude), OpenAI (GPT).
 | `run <name> [--var=val]` | Render a template (alias: `r`) |
 | `send <name> [--var=val]` | Render and send to LLM (alias: `s`) |
 | `cost <name> [--var=val]` | Estimate cost before sending |
+| `test <name> [--var=val]` | Prompt testing (regression + model compare) (alias: `t`) |
 | `experiment <name>` | Benchmark template across models (alias: `exp`) |
 | `list` | List all available templates (alias: `ls`) |
 | `add <name>` | Create a new prompt template |
@@ -261,10 +268,10 @@ Shorthand: `promptctl review --file=x.ts` is equivalent to `promptctl run review
 - Experimentation and optimization
 - Offline rule-based prompt creation from intent (no LLM, no API key, no network)
 
-### v1.1.0: Prompt Testing Framework
+### v1.1.0: Prompt Testing Framework (in progress)
+- `promptctl test` command for regression checks and model comparison
 - Test templates against expected outputs
-- Regression testing for prompt changes
-- Model comparison benchmarks
+- CI gates for prompt quality and regressions
 
 ### v2.0.0: Cloud Platform
 - Web dashboard for prompt management
@@ -301,11 +308,28 @@ The extension is included in the repo under `pi-package/` and published to npm.
 
 ## Contributing
 
-We welcome contributions! See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for:
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - Developer setup and build instructions
 - Code style and PR process
 - How to add new commands and templates
 - Testing requirements
+
+## Open Core
+
+promptctl follows an open-core strategy:
+- Open source: CLI, prompt engine, template format, scoring/testing, and provider adapters
+- Commercial roadmap: hosted registry, cloud prompt versioning, team collaboration, and analytics
+
+This keeps local developer workflows transparent and OSS-friendly while enabling a sustainable hosted product.
+
+## Cloud Opt-In
+
+Optional cloud event calls (for `create` rating/feedback) are disabled by default.
+
+- Enable explicitly: `PROMPTCTL_CLOUD_ENABLED=1`
+- Set endpoint: `PROMPTCTL_CLOUD_URL=https://your-cloud-endpoint`
+
+Without opt-in, promptctl keeps rating/feedback data local under `~/.promptctl/`.
 
 ## License
 

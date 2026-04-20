@@ -25,6 +25,12 @@ type Config struct {
 	EnhanceMode string
 	// DefaultCreateFormat is the saved output format for "promptctl create" when not overridden by --format. Stored in ~/.promptctl/create_format.
 	DefaultCreateFormat string
+	// CloudEnabled controls whether promptctl may send optional cloud events (ratings/feedback).
+	// Set with PROMPTCTL_CLOUD_ENABLED=1 (or true/yes/on).
+	CloudEnabled bool
+	// CloudBaseURL is the cloud endpoint base URL for optional cloud features.
+	// Set with PROMPTCTL_CLOUD_URL. If empty, falls back to EnhanceURL for compatibility.
+	CloudBaseURL string
 }
 
 // Load discovers and merges config from global and local sources.
@@ -62,6 +68,11 @@ func Load() (*Config, error) {
 	if cfg.EnhanceMode == "llm" && cfg.EnhanceURL == "" {
 		cfg.EnhanceURL = DefaultEnhanceURL
 	}
+	cfg.CloudEnabled = parseBoolEnv(os.Getenv("PROMPTCTL_CLOUD_ENABLED"))
+	cfg.CloudBaseURL = strings.TrimSpace(os.Getenv("PROMPTCTL_CLOUD_URL"))
+	if cfg.CloudBaseURL == "" {
+		cfg.CloudBaseURL = cfg.EnhanceURL
+	}
 	if b, err := os.ReadFile(filepath.Join(globalDir, "create_format")); err == nil {
 		if f := strings.TrimSpace(string(b)); f != "" {
 			cfg.DefaultCreateFormat = f
@@ -69,6 +80,15 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func parseBoolEnv(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // SaveCreateFormat persists the default create output format to ~/.promptctl/create_format.

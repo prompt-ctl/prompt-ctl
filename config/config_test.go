@@ -126,6 +126,58 @@ func TestLoad_EnhanceEnvVars(t *testing.T) {
 	}
 }
 
+func TestLoad_CloudDisabledByDefault(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("PROMPTCTL_CLOUD_ENABLED", "")
+	t.Setenv("PROMPTCTL_CLOUD_URL", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() err = %v", err)
+	}
+	if cfg.CloudEnabled {
+		t.Fatal("CloudEnabled should default to false")
+	}
+	if cfg.CloudBaseURL != "" {
+		t.Fatalf("CloudBaseURL should default to empty in OSS config, got %q", cfg.CloudBaseURL)
+	}
+}
+
+func TestLoad_CloudEnabledFromEnv(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("PROMPTCTL_CLOUD_ENABLED", "1")
+	t.Setenv("PROMPTCTL_CLOUD_URL", "https://cloud.example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() err = %v", err)
+	}
+	if !cfg.CloudEnabled {
+		t.Fatal("CloudEnabled should be true when PROMPTCTL_CLOUD_ENABLED=1")
+	}
+	if cfg.CloudBaseURL != "https://cloud.example.com" {
+		t.Fatalf("CloudBaseURL = %q, want https://cloud.example.com", cfg.CloudBaseURL)
+	}
+}
+
+func TestLoad_CloudURLFallsBackToEnhanceURL(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("PROMPTCTL_CLOUD_ENABLED", "true")
+	t.Setenv("PROMPTCTL_CLOUD_URL", "")
+	t.Setenv("PROMPTCTL_ENHANCE_URL", "https://enhance.example.com")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() err = %v", err)
+	}
+	if cfg.CloudBaseURL != "https://enhance.example.com" {
+		t.Fatalf("CloudBaseURL = %q, want fallback enhance URL", cfg.CloudBaseURL)
+	}
+}
+
 func TestLoad_EnhanceModeDefaultLLM(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)

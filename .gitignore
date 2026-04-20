@@ -57,6 +57,7 @@ internal/analytics/
 
 
 /docs/emulated-runs
+/docs/internal/
 
 # ralphex progress logs
 .ralphex/progress/

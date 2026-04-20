@@ -13,6 +13,7 @@
 | [INSTALL](INSTALL.md) | Installation Guide |
 | [ARCHITECTURE](ARCHITECTURE.md) | Architecture |
 | [ROADMAP](ROADMAP.md) | Roadmap |
+| [OPEN_SOURCE_LAUNCH](OPEN_SOURCE_LAUNCH.md) | OSS launch and open-core execution plan |
 | [plans/2025-02-18-cli-interactive-analytics-design](plans/2025-02-18-cli-interactive-analytics-design.md) | plans/2025 02 18 cli interactive analytics design |
 | [plans/2025-02-18-cli-interactive-analytics-plan](plans/2025-02-18-cli-interactive-analytics-plan.md) | plans/2025 02 18 cli interactive analytics plan |
 | [plans/2025-02-19-analytics-collection-and-reading-design](plans/2025-02-19-analytics-collection-and-reading-design.md) | plans/2025 02 19 analytics collection and reading design |
