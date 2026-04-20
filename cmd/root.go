@@ -29,26 +29,10 @@ import (
 
 const version = "1.0.0"
 
-const githubReleasesLatest = "https://api.github.com/repos/oleg-koval/promptctl/releases/latest"
-const versionCheckInterval = 24 * time.Hour
+const githubReleasesLatest = "https://api.github.com/repos/prompt-ctl/promptctl/releases/latest"
 
 // Execute is the main entry point for the CLI
 func Execute() error {
-	var upgradeMsg string
-	var upgradeCh chan string
-	defer func() {
-		if upgradeCh != nil {
-			select {
-			case msg := <-upgradeCh:
-				upgradeMsg = msg
-			case <-time.After(1500 * time.Millisecond):
-			}
-		}
-		if upgradeMsg != "" {
-			fmt.Fprintln(os.Stderr, ui.Hint("↑ "+upgradeMsg))
-		}
-	}()
-
 	// First-time setup: run onboarding once (init + LLM config + aliases) then continue.
 	if interactive() && !onboarding.FirstRunDone() {
 		runFirstTimeOnboarding()
@@ -62,13 +46,8 @@ func Execute() error {
 	}
 
 	command := os.Args[1]
-	if command != "version" && command != "-v" && command != "--version" && stderrIsTerminal() && shouldCheckVersion() {
-		upgradeCh = make(chan string, 1)
-		go func() {
-			msg := checkUpgrade(3 * time.Second)
-			markLastVersionCheck()
-			upgradeCh <- msg
-		}()
+	if msg := autoUpdateOnLaunch(command); msg != "" {
+		fmt.Fprintln(os.Stderr, ui.Hint("↑ "+msg))
 	}
 
 	switch command {
@@ -944,36 +923,8 @@ func maybeShowAliasTip() {
 	_ = os.WriteFile(shownPath, []byte(""), 0644)
 }
 
-// shouldCheckVersion returns true if we haven't checked for a new version in the last versionCheckInterval.
-func shouldCheckVersion() bool {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return false
-	}
-	path := filepath.Join(home, ".promptctl", "last_version_check")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return true
-	}
-	ts, err := time.Parse(time.RFC3339, strings.TrimSpace(string(data)))
-	if err != nil {
-		return true
-	}
-	return time.Since(ts) >= versionCheckInterval
-}
-
-func markLastVersionCheck() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
-	}
-	dir := filepath.Join(home, ".promptctl")
-	_ = os.MkdirAll(dir, 0755)
-	_ = os.WriteFile(filepath.Join(dir, "last_version_check"), []byte(time.Now().UTC().Format(time.RFC3339)), 0644)
-}
-
-// checkUpgrade fetches the latest release from GitHub and returns an upgrade hint if newer than current version. Timeout applies to the HTTP request.
-func checkUpgrade(timeout time.Duration) string {
+// latestReleaseVersion fetches the latest release tag from GitHub.
+func latestReleaseVersion(timeout time.Duration) string {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubReleasesLatest, nil)
@@ -996,13 +947,67 @@ func checkUpgrade(timeout time.Duration) string {
 		return ""
 	}
 	latest := strings.TrimPrefix(strings.TrimSpace(v.TagName), "v")
-	if latest == "" {
+	return latest
+}
+
+func autoUpdateEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PROMPTCTL_AUTOUPDATE"))) {
+	case "0", "false", "off", "no":
+		return false
+	default:
+		return true
+	}
+}
+
+func autoUpdateOnLaunch(command string) string {
+	if command == "version" || command == "-v" || command == "--version" {
 		return ""
 	}
-	if !versionLess(version, latest) {
+	if os.Getenv("CI") != "" || !interactive() || !autoUpdateEnabled() {
 		return ""
 	}
-	return "A new version (v" + latest + ") is available. Upgrade: brew upgrade --cask oleg-koval/tap/promptctl (or download from GitHub Releases)."
+
+	latest := latestReleaseVersion(3 * time.Second)
+	if latest == "" || !versionLess(version, latest) {
+		return ""
+	}
+
+	updater, args, err := detectUpdateCommand()
+	if err != nil {
+		return "A new version (v" + latest + ") is available. Run: brew upgrade promptctl"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, updater, args...)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	if err := cmd.Run(); err != nil {
+		return "Auto-update failed. Run manually: " + updater + " " + strings.Join(args, " ")
+	}
+
+	return "Auto-updated to latest available release (v" + latest + ")."
+}
+
+func detectUpdateCommand() (string, []string, error) {
+	if _, err := exec.LookPath("brew"); err == nil {
+		if brewHasPackage("formula", "promptctl") {
+			return "brew", []string{"upgrade", "--formula", "promptctl"}, nil
+		}
+		if brewHasPackage("cask", "promptctl") {
+			return "brew", []string{"upgrade", "--cask", "promptctl"}, nil
+		}
+	}
+	return "", nil, fmt.Errorf("no supported package manager detected")
+}
+
+func brewHasPackage(kind, name string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "brew", "list", "--"+kind, name)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	return cmd.Run() == nil
 }
 
 // versionLess returns true if a is strictly less than b (e.g. "0.8.6" < "0.9.0"). Non-numeric parts are compared as strings.

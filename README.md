@@ -1,5 +1,12 @@
 # promptctl
 
+[![CI](https://github.com/prompt-ctl/promptctl/actions/workflows/ci.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/ci.yml)
+[![Release](https://github.com/prompt-ctl/promptctl/actions/workflows/release.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/prompt-ctl/promptctl)](https://github.com/prompt-ctl/promptctl/releases)
+[![Homebrew](https://img.shields.io/badge/Homebrew-promptctl-orange)](https://github.com/oleg-koval/homebrew-tap)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Security Scan](https://github.com/prompt-ctl/promptctl/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/gitleaks.yml)
+
 **A CLI for version control and testing of LLM prompt templates.**
 
 Copy-paste prompts are unmaintainable. They drift across projects, lose context, and resist collaboration. **promptctl treats prompts like code** - version them, template them, test them, and share them across your team.
@@ -40,6 +47,11 @@ sudo mv promptctl /usr/local/bin/
 Grab the latest release for your platform from [GitHub Releases](https://github.com/oleg-koval/promptctl/releases).
 
 See [docs/INSTALL.md](docs/INSTALL.md) for detailed platform-specific instructions.
+
+### Auto-update behavior
+
+- On interactive CLI launch, `promptctl` checks for a newer release and runs auto-update when installed via Homebrew.
+- Set `PROMPTCTL_AUTOUPDATE=0` to disable this behavior.
 
 ## Quick Start (5 minutes)
 

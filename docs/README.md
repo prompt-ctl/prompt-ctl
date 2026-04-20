@@ -10,6 +10,7 @@
 | [plans/2026-02-19-gemini-3.1-prep](plans/2026-02-19-gemini-3.1-prep.md) | Gemini 3.1 Pro — Prep and implementation checklist |
 | [plans/2026-02-26-persistent-benchmark-recording](plans/2026-02-26-persistent-benchmark-recording.md) | Persistent Benchmark Recording Implementation Plan |
 | [CONTRIBUTING](CONTRIBUTING.md) | Contributing to promptctl |
+| [../SECURITY](../SECURITY.md) | Security policy and vulnerability reporting |
 | [INSTALL](INSTALL.md) | Installation Guide |
 | [ARCHITECTURE](ARCHITECTURE.md) | Architecture |
 | [ROADMAP](ROADMAP.md) | Roadmap |
