@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/cmd"
+	"github.com/prompt-ctl/promptctl/cmd"
 )
 
 // --- Integration Test Infrastructure ---

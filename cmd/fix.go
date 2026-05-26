@@ -7,9 +7,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/oleg-koval/promptctl/internal/discover"
-	"github.com/oleg-koval/promptctl/internal/scoreconfig"
-	"github.com/oleg-koval/promptctl/prompt"
+	"github.com/prompt-ctl/promptctl/internal/discover"
+	"github.com/prompt-ctl/promptctl/internal/scoreconfig"
+	"github.com/prompt-ctl/promptctl/prompt"
 )
 
 func runFix() error {

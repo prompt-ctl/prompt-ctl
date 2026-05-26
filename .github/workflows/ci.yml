@@ -29,16 +29,16 @@ jobs:
 
       - name: Prompt regression check
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           # Skip if API key is not available
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "⏭️  Skipped: ANTHROPIC_API_KEY not configured"
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "⏭️  Skipped: GROQ_API_KEY not configured"
             exit 0
           fi
           ./promptctl experiment review \
             --file=cmd/root.go \
-            --models=claude-sonnet-4-5-20250929 \
+            --models=llama-3.3-70b-versatile \
             --repeat=2 \
             --min-score=50 \
             --ci

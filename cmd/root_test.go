@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/config"
+	"github.com/prompt-ctl/promptctl/config"
 )
 
 func TestExecute_Version(t *testing.T) {

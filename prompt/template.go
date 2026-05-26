@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/oleg-koval/promptctl/config"
+	"github.com/prompt-ctl/promptctl/config"
 )
 
 type TemplateMeta struct {

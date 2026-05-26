@@ -28,7 +28,7 @@ builds:
     # Inject version info at build time
     ldflags:
       - -s -w
-      - -X github.com/oleg-koval/promptctl/cmd.version={{.Version}}
+      - -X github.com/prompt-ctl/promptctl/cmd.version={{.Version}}
 
 archives:
   - id: promptctl
@@ -57,7 +57,7 @@ release:
 
     ### Homebrew
     ```bash
-    brew tap oleg-koval/tap
+    brew tap prompt-ctl/tap
     brew install promptctl
     ```
 
@@ -75,7 +75,7 @@ release:
 brews:
   - name: promptctl
     repository:
-      owner: oleg-koval
+      owner: prompt-ctl
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"

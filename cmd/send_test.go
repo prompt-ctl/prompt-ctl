@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/prompt"
+	"github.com/prompt-ctl/promptctl/prompt"
 )
 
 // --- min-score parsing from parseVars ---

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/oleg-koval/promptctl/config"
-	"github.com/oleg-koval/promptctl/internal/safepath"
-	"github.com/oleg-koval/promptctl/llm"
-	"github.com/oleg-koval/promptctl/prompt"
+	"github.com/prompt-ctl/promptctl/config"
+	"github.com/prompt-ctl/promptctl/internal/safepath"
+	"github.com/prompt-ctl/promptctl/llm"
+	"github.com/prompt-ctl/promptctl/prompt"
 )
 
 type ExecutionResult struct {

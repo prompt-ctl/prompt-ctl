@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/llm"
+	"github.com/prompt-ctl/promptctl/llm"
 )
 
 type testCommandMockClient struct {

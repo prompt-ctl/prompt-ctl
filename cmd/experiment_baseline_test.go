@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/config"
-	"github.com/oleg-koval/promptctl/llm"
+	"github.com/prompt-ctl/promptctl/config"
+	"github.com/prompt-ctl/promptctl/llm"
 )
 
 // mockClient returns predefined scores for testing

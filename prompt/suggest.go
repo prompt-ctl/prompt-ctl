@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/oleg-koval/promptctl/llm"
+	"github.com/prompt-ctl/promptctl/llm"
 )
 
 const maxPromptChars = 500

@@ -69,7 +69,7 @@ These are ideas we're excited about but haven't committed to a timeline:
 
 We build in the open and prioritize based on community input.
 
-- **Propose ideas** - Open a [GitHub Discussion](https://github.com/oleg-koval/promptctl/discussions) to suggest features or share use cases
+- **Propose ideas** - Open a [GitHub Discussion](https://github.com/prompt-ctl/promptctl/discussions) to suggest features or share use cases
 - **Vote on features** - React to existing discussions to signal interest. The most-requested features get prioritized
 - **Contribute code** - See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit PRs. Feature PRs that align with the roadmap are welcome
 - **Sponsor development** - Sponsoring helps us dedicate more time to open-source work. See our [GitHub Sponsors](https://github.com/sponsors/oleg-koval) page

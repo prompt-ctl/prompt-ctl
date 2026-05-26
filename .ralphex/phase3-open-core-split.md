@@ -194,9 +194,9 @@ You are preparing the promptctl codebase for open-source release by removing all
 
 ### 12. Final Grep Audit
 - [x] Search entire codebase for private URLs:
-  - `oleg-koval/promptctl-releases`
-  - `oleg-koval/homebrew-tap`
-  - `oleg-koval/promptctl` (should be updated to new org if applicable)
+  - `prompt-ctl/promptctl-releases`
+  - `prompt-ctl/homebrew-tap`
+  - `prompt-ctl/promptctl` (should be updated to new org if applicable)
   - Any Cloudflare worker URLs
   - Any wrangler references
 - [x] Search for API keys / secrets patterns:

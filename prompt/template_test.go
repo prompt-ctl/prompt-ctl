@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/config"
+	"github.com/prompt-ctl/promptctl/config"
 )
 
 func TestTemplate_VariableNames(t *testing.T) {

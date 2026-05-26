@@ -3,7 +3,7 @@
 [![CI](https://github.com/prompt-ctl/promptctl/actions/workflows/ci.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/ci.yml)
 [![Release](https://github.com/prompt-ctl/promptctl/actions/workflows/release.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/prompt-ctl/promptctl)](https://github.com/prompt-ctl/promptctl/releases)
-[![Homebrew](https://img.shields.io/badge/Homebrew-promptctl-orange)](https://github.com/oleg-koval/homebrew-tap)
+[![Homebrew](https://img.shields.io/badge/Homebrew-promptctl-orange)](https://github.com/prompt-ctl/homebrew-tap)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Security Scan](https://github.com/prompt-ctl/promptctl/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/prompt-ctl/promptctl/actions/workflows/gitleaks.yml)
 
@@ -27,24 +27,24 @@ Copy-paste prompts are unmaintainable. They drift across projects, lose context,
 
 **macOS:**
 ```bash
-brew tap oleg-koval/tap && brew install promptctl
+brew tap prompt-ctl/tap && brew install promptctl
 ```
 
 **Linux / macOS / Windows (Go):**
 ```bash
-go install github.com/oleg-koval/promptctl@latest
+go install github.com/prompt-ctl/promptctl@latest
 ```
 
 **From source:**
 ```bash
-git clone https://github.com/oleg-koval/promptctl.git
+git clone https://github.com/prompt-ctl/promptctl.git
 cd promptctl
 go build -o promptctl .
 sudo mv promptctl /usr/local/bin/
 ```
 
 **Direct binary download:**
-Grab the latest release for your platform from [GitHub Releases](https://github.com/oleg-koval/promptctl/releases).
+Grab the latest release for your platform from [GitHub Releases](https://github.com/prompt-ctl/promptctl/releases).
 
 See [docs/INSTALL.md](docs/INSTALL.md) for detailed platform-specific instructions.
 
@@ -364,5 +364,5 @@ Without opt-in, promptctl keeps rating/feedback data local under `~/.promptctl/`
 ## Links
 
 - **Website:** [prompt-ctl.com](https://prompt-ctl.com)
-- **Issues:** [GitHub Issues](https://github.com/oleg-koval/promptctl/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/oleg-koval/promptctl/discussions)
+- **Issues:** [GitHub Issues](https://github.com/prompt-ctl/promptctl/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/prompt-ctl/promptctl/discussions)

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/oleg-koval/promptctl/internal/discover"
-	"github.com/oleg-koval/promptctl/internal/scoreconfig"
-	"github.com/oleg-koval/promptctl/prompt"
+	"github.com/prompt-ctl/promptctl/internal/discover"
+	"github.com/prompt-ctl/promptctl/internal/scoreconfig"
+	"github.com/prompt-ctl/promptctl/prompt"
 )
 
 // findScoreConfigDir walks up from cwd to find a directory containing .promptctl (same logic as config.findLocalConfig).

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oleg-koval/promptctl/config"
-	"github.com/oleg-koval/promptctl/prompt"
+	"github.com/prompt-ctl/promptctl/config"
+	"github.com/prompt-ctl/promptctl/prompt"
 )
 
 // TestExampleTemplatesParse verifies that all YAML templates in examples/ are

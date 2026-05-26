@@ -157,7 +157,7 @@ var Providers = map[string]Provider{
 		Name:    "Promptctl",
 		BaseURL: "", // use PROMPTCTL_LLM_URL at runtime
 		EnvKey:  "PROMPTCTL_API_KEY",
-		KeyURL:  "https://github.com/oleg-koval/promptctl",
+		KeyURL:  "https://github.com/prompt-ctl/promptctl",
 		Order:   0,
 		Models: []Model{
 			{ID: "atlas", Name: "Atlas (hosted)", InputPerMTok: 0, OutputPerMTok: 0, ContextWindow: 128000, Provider: "promptctl"},
@@ -628,8 +628,8 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &Config{
-				DefaultProvider: "anthropic",
-				DefaultModel:    "claude-sonnet-4-5-20250929",
+				DefaultProvider: "promptctl",
+				DefaultModel:    "atlas",
 				APIKeys:         make(map[string]string),
 			}, nil
 		}
